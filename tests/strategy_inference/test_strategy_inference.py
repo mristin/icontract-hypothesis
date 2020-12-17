@@ -133,6 +133,33 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
 
         icontract_hypothesis.test_with_inferred_strategies(some_func)
 
+    def test_with_weakened_preconditions(self) -> None:
+        class A(icontract.DBC):
+            @icontract.require(lambda x: 0 < x < 20)
+            @icontract.require(lambda x: x % 3 == 0)
+            def some_func(self, x: int) -> None:
+                pass
+
+        class B(A):
+            @icontract.require(lambda x: 0 < x < 20)
+            @icontract.require(lambda x: x % 7 == 0)
+            def some_func(self, x: int) -> None:
+                # The inputs from B.some_func need to satisfy either their own preconditions or
+                # the preconditions of A.some_func ("require else").
+                pass
+
+        b = B()
+
+        strategies = icontract_hypothesis.infer_strategies(b.some_func)
+        self.assertEqual(
+            "{'x': one_of("
+            "integers(min_value=1, max_value=19).filter(lambda x: x % 3 == 0), "
+            "integers(min_value=1, max_value=19).filter(lambda x: x % 7 == 0))}",
+            str(strategies),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategies(b.some_func)
+
     def test_composition(self) -> None:
         class A(icontract.DBC):
             @icontract.require(lambda x: x > 0)
