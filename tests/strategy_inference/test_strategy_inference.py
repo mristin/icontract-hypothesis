@@ -211,11 +211,15 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
 
         strategies = icontract_hypothesis.infer_strategies(some_func)
 
-        # The strategies inferred for B do not reflect the preconditions of A.
-        # This is by design as A is automatically registered with Hypothesis, so Hypothesis
-        # will instantiate a B only at run time.
-
-        self.assertEqual("{'a': builds(B, x=integers(min_value=1))}", str(strategies))
+        # B will be built lazily with preconditions by a monkey-patched ``builds``
+        # function.
+        self.assertTrue(
+            re.match(
+                r"{'a': just\(<class '[a-zA-Z_0-9.<>]+\.B'>\)\.flatmap\(from_type\)}",
+                str(strategies),
+            ),
+            str(strategies),
+        )
 
         icontract_hypothesis.test_with_inferred_strategies(some_func)
 
@@ -254,9 +258,8 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
 
         strategies = icontract_hypothesis.infer_strategies(some_func)
 
-        # The strategies inferred for data classes do not reflect the preconditions of A.
-        # This is by design as A is automatically registered with Hypothesis, so Hypothesis
-        # will instantiate an A only at run time when creating B.
+        # B will be built lazily with preconditions by a monkey-patched ``builds``
+        # function.
         self.assertEqual("{'b': builds(B)}", str(strategies))
 
         icontract_hypothesis.test_with_inferred_strategies(some_func)
@@ -323,9 +326,8 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
 
         strategies = icontract_hypothesis.infer_strategies(some_func)
 
-        # The strategies inferred for named tuples do not reflect the preconditions of A.
-        # This is by design as A is automatically registered with Hypothesis, so Hypothesis
-        # will instantiate an A only at run time when creating B.
+        # B will be built lazily with preconditions by a monkey-patched ``builds``
+        # function.
         self.assertEqual("{'b': builds(B)}", str(strategies))
 
         icontract_hypothesis.test_with_inferred_strategies(some_func)

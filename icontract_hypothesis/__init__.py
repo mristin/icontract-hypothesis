@@ -31,6 +31,7 @@ from typing import (
 
 import hypothesis.errors
 import hypothesis.strategies
+import hypothesis.strategies._internal.core
 
 import icontract._checkers
 import icontract._recompute
@@ -672,34 +673,6 @@ def _infer_strategies_recursively(
     return strategies
 
 
-def _builds_with_preconditions(
-    a_type: Type[T],
-) -> hypothesis.strategies.SearchStrategy[T]:
-    """Create a strategy for instances to satisfy the preconditions on ``__init__``."""
-    init = getattr(a_type, "__init__")
-
-    if inspect.isfunction(init):
-        strategies = infer_strategies(init)
-    elif isinstance(init, icontract._checkers._SLOT_WRAPPER_TYPE):
-        # We have to distinguish this special case which is used by named tuples and
-        # possibly other optimized data structures.
-        # In those cases, we have to infer the strategy based on __new__ instead of __init__.
-        new = getattr(a_type, "__new__")
-        assert (
-            new is not None
-        ), "Expected __new__ in {} if __init__ is a slot wrapper.".format(a_type)
-
-        strategies = infer_strategies(new)
-    else:
-        raise AssertionError(
-            "Expected __init__ to be either a function or a slot wrapper, but got: {}".format(
-                type(init)
-            )
-        )
-
-    return hypothesis.strategies.builds(a_type, **strategies)
-
-
 def infer_strategies(
     func: CallableT,
 ) -> Mapping[str, hypothesis.strategies.SearchStrategy[Any]]:
@@ -828,3 +801,49 @@ def test_with_inferred_strategies(func: CallableT) -> None:
 
     wrapped = hypothesis.given(**strategies)(execute)
     wrapped()
+
+
+def _monkey_patch_hypothesis_builds() -> None:
+    """Patch ``hypothesis.strategies.builds`` to propagate preconditions to constructors."""
+    original_builds = hypothesis.strategies._internal.core.builds
+
+    def patched_builds(  # type: ignore
+        callable_and_args, *args, **kwargs
+    ) -> hypothesis.strategies.SearchStrategy[T]:
+        """Propagate preconditions to constructor."""
+        if inspect.isclass(callable_and_args) and issubclass(
+            callable_and_args, icontract._metaclass.DBC
+        ):
+            a_type = callable_and_args
+
+            init = getattr(a_type, "__init__")
+
+            if inspect.isfunction(init):
+                strategies = infer_strategies(init)
+            elif isinstance(init, icontract._checkers._SLOT_WRAPPER_TYPE):
+                # We have to distinguish this special case which is used by named tuples and
+                # possibly other optimized data structures.
+                # In those cases, we have to infer the strategy based on __new__ instead of
+                # __init__.
+                new = getattr(a_type, "__new__")
+                assert (
+                    new is not None
+                ), "Expected __new__ in {} if __init__ is a slot wrapper.".format(
+                    a_type
+                )
+
+                strategies = infer_strategies(new)
+            else:
+                raise AssertionError(
+                    "Expected __init__ to be either a function or a slot wrapper, "
+                    "but got: {}".format(type(init))
+                )
+
+            return original_builds(a_type, **strategies)
+
+        return original_builds(callable_and_args, *args, **kwargs)
+
+    hypothesis.strategies._internal.core.builds = patched_builds  # type: ignore
+
+
+_monkey_patch_hypothesis_builds()
