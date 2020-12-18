@@ -1,2 +1,2 @@
 icontract>=2.4.0,<3
-hypothesis>=5,<6
+hypothesis>5,<7
