@@ -103,7 +103,7 @@ class TestSelectFunctionPoints(unittest.TestCase):
         self.assertListEqual([], errors)
 
         self.assertListEqual(
-            ["square_greater_than_zero", "some_func", "another_func"],
+            ["some_func", "another_func", "yet_another_func"],
             [point.func.__name__ for point in points],
         )
 
@@ -162,7 +162,7 @@ class TestSelectFunctionPoints(unittest.TestCase):
         self.assertListEqual([], errors)
 
         self.assertListEqual(
-            ["square_greater_than_zero", "another_func"],
+            ["another_func", "yet_another_func"],
             [point.func.__name__ for point in points],
         )
 
@@ -183,7 +183,7 @@ class TestSelectFunctionPoints(unittest.TestCase):
         self.assertListEqual([], errors)
 
         self.assertListEqual(
-            ["square_greater_than_zero", "another_func"],
+            ["another_func", "yet_another_func"],
             [point.func.__name__ for point in points],
         )
 

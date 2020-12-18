@@ -62,6 +62,7 @@ setup(
     entry_points={
         "console_scripts": [
             "pyicontract-hypothesis = icontract_hypothesis.pyicontract_hypothesis.main:entry_point"
-        ]
+        ],
+        "hypothesis": ["_ = icontract_hypothesis"],
     },
 )

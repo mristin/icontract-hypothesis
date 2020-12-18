@@ -13,17 +13,15 @@ from icontract_hypothesis.pyicontract_hypothesis import _general, main, _test
 
 class TestParsingOfParameters(unittest.TestCase):
     def test_subcommand_test(self) -> None:
+        # fmt: off
         argv = [
             "test",
-            "--path",
-            "some_module.py",
-            "--include",
-            "include-something",
-            "--exclude",
-            "exclude-something",
-            "--setting",
-            "suppress_health_check=[2, 3]",
+            "--path", "some_module.py",
+            "--include", "include-something",
+            "--exclude", "exclude-something",
+            "--setting", "suppress_health_check=[2, 3]",
         ]
+        # fmt: on
 
         parser = main._make_argument_parser()
         args, out, err = main._parse_args(parser=parser, argv=argv)
@@ -150,15 +148,14 @@ class TestTestViaSmoke(unittest.TestCase):
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
         pth = this_dir / "samples" / "sample_module.py"
 
+        # fmt: off
         argv = [
             "test",
-            "--path",
-            str(pth),
-            "--include",
-            ".*_func",
-            "--exclude",
-            "some.*",
+            "--path", str(pth),
+            "--include", ".*_func",
+            "--exclude", "some.*",
         ]
+        # fmt: on
 
         stdout = io.StringIO()
         stderr = io.StringIO()

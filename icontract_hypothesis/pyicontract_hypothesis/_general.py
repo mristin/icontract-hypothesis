@@ -221,6 +221,11 @@ def select_function_points(
         value = getattr(mod, key)
         if inspect.isfunction(value):
             func = value  # type: Callable[..., Any]
+
+            # Ignore imported functions
+            if func.__module__ != mod.__name__:
+                continue
+
             source_lines, srow = inspect.getsourcelines(func)
             point = FunctionPoint(
                 first_row=srow, last_row=srow + len(source_lines) - 1, func=func

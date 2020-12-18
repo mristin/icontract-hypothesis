@@ -93,7 +93,7 @@ def benchmark_icontract_assume_preconditions(arg_count: int = 1) -> None:
     assert count == 100
 
 
-def benchmark_icontract_inferred_strategies(arg_count: int = 1) -> None:
+def benchmark_icontract_inferred_strategy(arg_count: int = 1) -> None:
     """Benchmark the Hypothesis testing with icontract and inferred search strategies."""
     count = 0
 
@@ -127,7 +127,7 @@ def benchmark_icontract_inferred_strategies(arg_count: int = 1) -> None:
     else:
         raise NotImplementedError("arg_count {}".format(arg_count))
 
-    icontract_hypothesis.test_with_inferred_strategies(some_func)
+    icontract_hypothesis.test_with_inferred_strategy(some_func)
 
     # Assert the count of function executions for fair tests
     assert count == 100
@@ -259,7 +259,7 @@ def writeln_utf8(text: str = "") -> None:
 def measure_functions() -> None:
     # yapf: disable
     funcs = [
-        'benchmark_icontract_inferred_strategies',
+        'benchmark_icontract_inferred_strategy',
         'benchmark_icontract_assume_preconditions',
         'benchmark_dpcontracts',
         'benchmark_deal',

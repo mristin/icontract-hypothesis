@@ -34,13 +34,13 @@ goes.
 You can use icontract-hypothesis:
 
 * As a library, to write succinct unit tests,
-* As a command-line tool or integrate it with your IDE. This allows you to
-  automatically test functions while you develop and use it in your continuous
-  integration and
+* As a command-line tool or a tool to integrate it with your IDE.
+  This allows you to automatically test functions during the development and
+  use it in your continuous integration, and
 * As a ghostwriter utility giving you a starting point for your more elaborate
-  Hypothesis test code.
+  Hypothesis strategies.
 
-Since the contracts live close to the code, evolving the code automatically
+Since the contracts live close to the code, evolving the code also automatically
 evolves the tests.
 
 Usage
@@ -83,7 +83,7 @@ The function ``assume_preconditions`` created by
 ``icontract_hypothesis.make_assume_preconditions`` will reject all the input
 values which do not satisfy the pre-conditions of ``some_func``.
 
-**Infer strategies**. Second, you can automatically infer the strategies and test the function:
+**Infer strategy**. Second, you can automatically infer the strategy and test the function:
 
 .. code-block:: python
 
@@ -95,19 +95,25 @@ values which do not satisfy the pre-conditions of ``some_func``.
     ... def some_func(x: int) -> int:
     ...     return x - 1000
 
-    >>> icontract_hypothesis.test_with_inferred_strategies(some_func)
+    >>> icontract_hypothesis.test_with_inferred_strategy(some_func)
     Traceback (most recent call last):
         ...
     icontract.errors.ViolationError: File <doctest README.rst[10]>, line 2 in <module>:
     result > 0: result was -999
 
-Which approach to use depends on strategy inference. If the strategies can be
-inferred, prefer the second. However, if no strategies could be inferred and
-rejection sampling fails, you need to resort to the first approach and come up
-with appropriate search strategies manually.
+Which approach to use depends on how you want to write your tests.
+The first approach, using ``assume_preconditions``, is practical if you already
+defined your search strategy and you only want to exclude a few edge cases.
+The second approach, automatically inferring test strategies, is useful if you
+just want to test your function without specifying any particular search strategy.
 
-Use ``icontract_hypothesis.infer_strategies`` to inspect which strategies were
-inferred:
+Icontract-hypothesis guarantees that the inferred strategy must satisfy the preconditions.
+If it does not, you should consider it a bug in which case
+please `create an issue <https://github.com/mristin/icontract-hypothesis/issues/new>`_
+so that we can fix it.
+
+If you want to inspect the strategy or further refine it programmatically, use
+``icontract_hypothesis.infer_strategy``:
 
 .. code-block:: python
 
@@ -121,8 +127,8 @@ inferred:
     ... def some_func(x: float) -> int:
     ...     pass
 
-    >>> icontract_hypothesis.infer_strategies(some_func)
-    {'x': floats(min_value=0, exclude_min=True).filter(lambda x: x > math.sqrt(x))}
+    >>> icontract_hypothesis.infer_strategy(some_func)
+    fixed_dictionaries({'x': floats(min_value=0, exclude_min=True).filter(lambda x: x > math.sqrt(x))})
 
 Testing Tool
 ~~~~~~~~~~~~
@@ -174,16 +180,16 @@ current file name.
 
 Ghostwriting Tool
 ~~~~~~~~~~~~~~~~~
-Writing property-based tests by hand is tedious. To that end, we implemented
-a ghostwriter utility ``pyicontract-hypothesis ghostwrite`` that comes up with
-a first draft based on pre-conditions that you manually refine later:
+Writing property-based tests by hand is tedious and can be partially automated.
+To that end, we implemented a ghostwriter utility ``pyicontract-hypothesis ghostwrite``
+that generates a first draft based on pre-conditions that you manually refine further:
 
 .. Help starts: pyicontract-hypothesis ghostwrite --help
 .. code-block::
 
     usage: pyicontract-hypothesis ghostwrite [-h] -m MODULE [-o OUTPUT]
-                                             [--explicit {strategies,strategies-and-assumes}]
-                                             [--bare] [-i [INCLUDE [INCLUDE ...]]]
+                                             [--explicit] [--bare]
+                                             [-i [INCLUDE [INCLUDE ...]]]
                                              [-e [EXCLUDE [EXCLUDE ...]]]
 
     optional arguments:
@@ -194,8 +200,7 @@ a first draft based on pre-conditions that you manually refine later:
                             Path to the file where the output should be written.
 
                             If '-', writes to STDOUT.
-      --explicit {strategies,strategies-and-assumes}
-                            Write the inferred strategies explicitly
+      --explicit            Write the inferred strategies explicitly
 
                             This is practical if you want to tune and
                             refine the strategies and just want to use
@@ -205,12 +210,6 @@ a first draft based on pre-conditions that you manually refine later:
                             automatically fix imports as this is
                             usually project-specific. You have to fix imports
                             manually after the ghostwriting.
-
-                            Possible levels of explicitness:
-                            * strategies: Write the inferred strategies
-
-                            * strategies-and-assumes: Write out both the inferred strategies
-                                   and the preconditions
       --bare                Print only the body of the tests and omit header/footer
                             (such as TestCase class or import statements).
 
@@ -237,7 +236,7 @@ a first draft based on pre-conditions that you manually refine later:
 
 .. Help ends: pyicontract-hypothesis ghostwrite --help
 
-The examples of ghostwritten tests is available at:
+The examples of ghostwritten tests are available at:
 `tests/pyicontract_hypothesis/samples <https://github.com/mristin/icontract-hypothesis/blob/main/tests/pyicontract_hypothesis/samples>`_
 
 Installation
@@ -271,14 +270,19 @@ a bit more intelligently:
   ``hypothesis.strategies.integers(min=6, max=9)``.
 
   We currently match bounds on all available Hypothesis types
-  (``int``, ``float``, ``datetime.date`` *etc*.) and regular expressions.
+  (``int``, ``float``, ``datetime.date`` *etc*.).
+  We also match regular expressions on ``str`` arguments.
 
 * Pre-conditions which could not be matched, but operate on a single argument
   are inferred based on the type hint and composed with Hypothesis
   ``FilteredStrategy``.
 
-* The remainder of the pre-conditions are enforced using ``hypothesis.assume``,
-  basically falling back to rejection sampling as the last resort.
+* The remainder of the pre-conditions are enforced by filtering on the whole
+  fixed dictionary which is finally passed into the function as keyword arguments.
+
+There is an ongoing effort to move the strategy matching code into Hypothesis and
+develop it further to include many more cases. See
+`this Hypothesis issue <https://github.com/HypothesisWorks/hypothesis/issues/2701>`_.
 
 Classes
 ~~~~~~~
@@ -290,6 +294,13 @@ That way icontract-hypothesis will use
 `hypothesis.strategies.register_type_strategy <https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.register_type_strategy>`_
 to register your class with Hypothesis and consider pre-conditions when building
 its instances.
+
+It is important that you do *not* use ``hypothesis.strategies.builds(.)`` with
+the classes using contracts in their constructors as ``builds`` will disregard the registered
+strategy. You should use ``hypothesis.strategies.from_type(.)`` instead. See
+`this comment on an Hypothesis issue <https://github.com/HypothesisWorks/hypothesis/issues/2708#issuecomment-749393747>`_
+and
+`the corresponding answer <https://github.com/HypothesisWorks/hypothesis/issues/2708#issuecomment-749397758>`_.
 
 Related Libraries
 -----------------
@@ -303,7 +314,7 @@ respectively).
 
 As of 2020-12-16:
 
-* Neither of the two handles behavioral sub-typing correctly
+* Neither of the two libraries handles behavioral sub-typing correctly
   (*i.e.*, they do not weaken and strengthen the pre-conditions, and
   post-conditions and invariants, respectively).
   Hence they can not be used with class hierarchies as the contracts are not
@@ -330,7 +341,7 @@ The following scripts were run:
 * `benchmarks/compare_with_others.py <https://github.com/Parquery/icontract/tree/master/benchmarks/compare_with_others.py>`_
 
 The benchmarks were executed on Intel(R) Xeon(R) E-2276M  CPU @ 2.80GHz.
-We used Python 3.8.5, icontract 2.4.0, deal 4.4.0 and dpcontracts 0.6.0.
+We used Python 3.8.5, icontract 2.4.1, deal 4.4.0 and dpcontracts 0.6.0.
 
 The following tables summarize the results.
 
@@ -342,10 +353,10 @@ Argument count: 1
 ==========================================  ============  ==============  =======================
 Case                                          Total time    Time per run    Relative time per run
 ==========================================  ============  ==============  =======================
-`benchmark_icontract_inferred_strategies`         0.53 s        52.92 ms                     100%
-`benchmark_icontract_assume_preconditions`        0.88 s        88.21 ms                     167%
-`benchmark_dpcontracts`                           1.19 s       118.99 ms                     225%
-`benchmark_deal`                                  0.90 s        90.43 ms                     171%
+`benchmark_icontract_inferred_strategy`           0.48 s        48.29 ms                     100%
+`benchmark_icontract_assume_preconditions`        0.79 s        78.75 ms                     163%
+`benchmark_dpcontracts`                           1.06 s       106.17 ms                     220%
+`benchmark_deal`                                  0.83 s        82.63 ms                     171%
 ==========================================  ============  ==============  =======================
 
 Argument count: 2
@@ -353,10 +364,10 @@ Argument count: 2
 ==========================================  ============  ==============  =======================
 Case                                          Total time    Time per run    Relative time per run
 ==========================================  ============  ==============  =======================
-`benchmark_icontract_inferred_strategies`         0.68 s        68.14 ms                     100%
-`benchmark_icontract_assume_preconditions`        1.86 s       186.15 ms                     273%
-`benchmark_dpcontracts`                           2.31 s       230.61 ms                     338%
-`benchmark_deal`                                  1.95 s       195.42 ms                     287%
+`benchmark_icontract_inferred_strategy`           0.63 s        63.45 ms                     100%
+`benchmark_icontract_assume_preconditions`        1.65 s       165.05 ms                     260%
+`benchmark_dpcontracts`                           2.10 s       209.51 ms                     330%
+`benchmark_deal`                                  1.61 s       161.09 ms                     254%
 ==========================================  ============  ==============  =======================
 
 Argument count: 3
@@ -364,10 +375,10 @@ Argument count: 3
 ==========================================  ============  ==============  =======================
 Case                                          Total time    Time per run    Relative time per run
 ==========================================  ============  ==============  =======================
-`benchmark_icontract_inferred_strategies`         0.79 s        78.85 ms                     100%
-`benchmark_icontract_assume_preconditions`        3.54 s       354.22 ms                     449%
-`benchmark_dpcontracts`                           4.45 s       444.93 ms                     564%
-`benchmark_deal`                                  3.44 s       344.00 ms                     436%
+`benchmark_icontract_inferred_strategy`           0.72 s        71.66 ms                     100%
+`benchmark_icontract_assume_preconditions`        3.30 s       330.20 ms                     461%
+`benchmark_dpcontracts`                           4.23 s       423.31 ms                     591%
+`benchmark_deal`                                  3.20 s       319.57 ms                     446%
 ==========================================  ============  ==============  =======================
 
 

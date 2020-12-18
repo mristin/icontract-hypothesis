@@ -7,12 +7,11 @@ import contextlib
 import io
 import sys
 import textwrap
-from typing import List, Optional, Tuple, TextIO, Union
+from typing import List, Optional, Tuple, TextIO, Union, NoReturn
 
 import icontract_hypothesis.pyicontract_hypothesis._general as _general
 import icontract_hypothesis.pyicontract_hypothesis._ghostwrite as _ghostwrite
 import icontract_hypothesis.pyicontract_hypothesis._test as _test
-import icontract_hypothesis.pyicontract_hypothesis.exhaustive as exhaustive
 
 
 class Params:
@@ -125,18 +124,9 @@ def _make_argument_parser() -> argparse.ArgumentParser:
             Mind that pyicontract-hypothesis does not
             automatically fix imports as this is
             usually project-specific. You have to fix imports
-            manually after the ghostwriting.
-
-            Possible levels of explicitness:
-            * {0}: Write the inferred strategies
-
-            * {1}: Write out both the inferred strategies
-                   and the preconditions"""
-        ).format(
-            _ghostwrite.Explicit.STRATEGIES.value,
-            _ghostwrite.Explicit.STRATEGIES_AND_ASSUMES.value,
+            manually after the ghostwriting."""
         ),
-        choices=[item.value for item in _ghostwrite.Explicit],
+        action="store_true",
     )
 
     ghostwriter_parser.add_argument(
@@ -227,6 +217,11 @@ def _parse_args(
             return None, out.read(), err.read()
 
 
+def assert_never(something: NoReturn) -> NoReturn:
+    """Enforce exhaustive matching at mypy time."""
+    assert False, "Unhandled type: {}".format(type(something).__name__)
+
+
 def run(argv: List[str], stdout: TextIO, stderr: TextIO) -> int:
     """Execute the run routine."""
     parser = _make_argument_parser()
@@ -260,7 +255,7 @@ def run(argv: List[str], stdout: TextIO, stderr: TextIO) -> int:
             else:
                 params.command.output.write_text(code)
     else:
-        exhaustive.assert_never(params.command)
+        assert_never(params.command)
 
     if errors:
         for error in errors:

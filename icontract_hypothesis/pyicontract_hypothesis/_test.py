@@ -83,24 +83,22 @@ def _test_function_point(
     errors = []  # type: List[str]
 
     func = point.func  # Optimize the look-up
-    assume_preconditions = icontract_hypothesis.make_assume_preconditions(func=func)
 
-    def execute(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        assume_preconditions(*args, **kwargs)
-        func(*args, **kwargs)
-
-    strategies = icontract_hypothesis.infer_strategies(func=func)
-
-    if len(strategies) == 0:
+    try:
+        strategy = icontract_hypothesis.infer_strategy(func=func)
+    except Exception as error:
         errors.append(
             (
-                "No strategies could be inferred for the function: {}. "
-                "Have you provided type hints for the arguments?"
-            ).format(func)
+                "Inference of the search strategy failed for the function: {}. "
+                "The error was: {}"
+            ).format(func, error)
         )
         return errors
 
-    wrapped = hypothesis.given(**strategies)(execute)
+    def execute(kwargs: Dict[str, Any]) -> None:
+        func(**kwargs)
+
+    wrapped = hypothesis.given(strategy)(execute)
     if settings:
         wrapped = hypothesis.settings(**settings)(wrapped)
 
