@@ -73,9 +73,9 @@ def main() -> int:
     subprocess.check_call(["coverage", "report"])
 
     print("Doctesting...")
-    subprocess.check_call([sys.executable, "-m", "doctest", "README.rst"])
     for pth in (repo_root / "icontract_hypothesis").glob("**/*.py"):
         subprocess.check_call([sys.executable, "-m", "doctest", str(pth)])
+    subprocess.check_call([sys.executable, "-m", "doctest", "README.rst"])
 
     print("Checking the restructured text of the readme...")
     subprocess.check_call(

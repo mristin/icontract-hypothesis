@@ -31,8 +31,9 @@ from typing import (
 
 import hypothesis.errors
 import hypothesis.strategies
-
+import hypothesis.strategies._internal.types
 import icontract._checkers
+import icontract._metaclass
 import icontract._recompute
 import icontract._represent
 import icontract._types
@@ -828,3 +829,43 @@ def test_with_inferred_strategies(func: CallableT) -> None:
 
     wrapped = hypothesis.given(**strategies)(execute)
     wrapped()
+
+
+def _register_with_hypothesis(cls: Type[T]) -> None:
+    """
+    Register ``cls`` with Hypothesis based on our custom ``_builds_with_preconditions``.
+
+    The registration is necessary so that the preconditions on the __init__ are propagated
+    in ``hypothesis.strategies.builds``.
+    """
+    # We should not register abstract classes as this will mislead Hypothesis to instantiate
+    # them.
+    if inspect.isabstract(cls):
+        return
+
+    if cls not in hypothesis.strategies._internal.types._global_type_lookup:
+        hypothesis.strategies.register_type_strategy(
+            cls, _builds_with_preconditions(cls)
+        )
+
+
+def _hook_into_icontract() -> None:
+    """
+    Redirect ``icontract._metaclass._register_for_hypothesis``.
+
+    All the classes previously registered by icontract are now re-registered
+    by ``_register_with_hypothesis``.
+    """
+    if not hasattr(icontract._metaclass, "_CONTRACT_CLASSES"):
+        return  # already hooked in
+
+    icontract._metaclass._register_for_hypothesis = _register_with_hypothesis
+
+    for cls in icontract._metaclass._CONTRACT_CLASSES:
+        _register_with_hypothesis(cls)
+
+    # Delete in order to fail fast
+    del icontract._metaclass._CONTRACT_CLASSES
+
+
+_hook_into_icontract()
