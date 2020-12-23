@@ -4,11 +4,9 @@ PLEASE DO NOT USE IT YET!
 icontract-hypothesis
 ====================
 
-.. image:: https://travis-ci.com/mristin/icontract-hypothesis.svg?branch=master
-    :target: https://travis-ci.com/mristin/icontract-hypothesis
-
-.. image:: https://coveralls.io/repos/github/mristin/icontract-hypothesis/badge.svg?branch=master
-    :target: https://coveralls.io/github/mristin/icontract-hypothesis
+.. image:: https://github.com/mristin/icontract-hypothesis/workflows/Test/badge.svg
+    :target: https://github.com/mristin/icontract-hypothesis/actions?query=workflow%3ATest
+    :alt: Test
 
 .. image:: https://badge.fury.io/py/icontract-hypothesis.svg
     :target: https://badge.fury.io/py/icontract-hypothesis
