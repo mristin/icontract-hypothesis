@@ -1115,14 +1115,12 @@ def _infer_strategy_from_conjunction(
         {
             arg_name: _infer_strategy_for_argument(
                 arg_name=arg_name,
-                type_hint=type_hints[arg_name],
+                type_hint=type_hint,
                 contracts=single_argument_contracts.get(arg_name, None),
             )
-            for arg_name in type_hints.keys()
+            for arg_name, type_hint in type_hints.items()
         }
     )
-
-    conditions_as_filters = []  # type: List[Callable[..., Any]]
 
     for contract in non_single_argument_contracts:
         condition_as_filter = _rewrite_condition_as_filter(contract=contract)
@@ -1132,9 +1130,6 @@ def _infer_strategy_from_conjunction(
         assert hasattr(condition_as_filter, "__icontract_hypothesis_source_code__")
         assert condition_as_filter.__name__ == "<lambda>", condition_as_filter.__name__
 
-        conditions_as_filters.append(condition_as_filter)
-
-    for condition_as_filter in conditions_as_filters:
         strategy = strategy.filter(condition_as_filter)
 
     return strategy
