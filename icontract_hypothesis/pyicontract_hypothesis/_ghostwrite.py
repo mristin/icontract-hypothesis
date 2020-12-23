@@ -4,22 +4,16 @@ import enum
 import inspect
 import pathlib
 import textwrap
-from typing import Optional, Tuple, List, overload, Union, Callable, Any
+from typing import Optional, Tuple, List, overload, Union, Callable, Any, cast
 
 import hypothesis.strategies
+import hypothesis.strategies._internal.collections
+import hypothesis.strategies._internal.lazy
 import icontract._checkers
 import icontract._represent
 
 import icontract_hypothesis
 import icontract_hypothesis.pyicontract_hypothesis._general as _general
-from icontract_hypothesis.pyicontract_hypothesis import exhaustive
-
-
-class Explicit(enum.Enum):
-    """Specify how explicit the ghostwriter should be."""
-
-    STRATEGIES = "strategies"
-    STRATEGIES_AND_ASSUMES = "strategies-and-assumes"
 
 
 class Params:
@@ -29,7 +23,7 @@ class Params:
         self,
         module_name: str,
         output: Optional[pathlib.Path],
-        explicit: Optional[Explicit],
+        explicit: bool,
         bare: bool,
     ) -> None:
         """Initialize with the given values."""
@@ -51,7 +45,7 @@ def parse_params(args: argparse.Namespace) -> Tuple[Optional[Params], List[str]]
         Params(
             module_name=args.module,
             output=output,
-            explicit=Explicit(args.explicit) if args.explicit is not None else None,
+            explicit=args.explicit,
             bare=args.bare,
         ),
         [],
@@ -141,83 +135,9 @@ def _ghostwrite_condition_code(condition: Callable[..., Any]) -> str:
     return lambda_inspection.text
 
 
-@icontract.ensure(
-    lambda result: not result.endswith("\n")
-    and not result.startswith(" ")
-    and not result.startswith("\t"),
-    "Not indented and no newline at the end",
-)
-def _ghostwrite_assumes(func: Callable[..., Any]) -> str:
-    """Ghostwrite the assume statements for the given function."""
-    checker = icontract._checkers.find_checker(func)
-    if checker is None:
-        return ""
-
-    preconditions = getattr(checker, "__preconditions__", None)
-    if preconditions is None:
-        return ""
-
-    # We need to pack all the preconditions in a large boolean expression so that
-    # the weakening can be handled easily.
-
-    dnf = []  # type: List[List[str]]
-    for group in preconditions:
-        conjunctions = []  # type: List[str]
-        for contract in group:
-            code = _ghostwrite_condition_code(condition=contract.condition)
-            conjunctions.append(code)
-
-        dnf.append(conjunctions)
-
-    if len(dnf) == 0:
-        return ""
-
-    if len(dnf) == 1:
-        if len(dnf[0]) == 1:
-            return "assume({})".format(dnf[0][0])
-        else:
-            formatted_conjunctions = textwrap.dedent(
-                """\
-                assume(
-                    {}
-                )"""
-            ).format(
-                _indent_but_first(
-                    " and\n".join("({})".format(code) for code in dnf[0]), level=1
-                )
-            )
-
-            return formatted_conjunctions
-
-    dnf_formatted = []  # type: List[str]
-    for conjunctions in dnf:
-        if len(conjunctions) == 1:
-            dnf_formatted.append("({})".format(conjunctions[0]))
-        else:
-            dnf_formatted.append(
-                textwrap.dedent(
-                    """\
-                (
-                    {}
-                )"""
-                ).format(
-                    _indent_but_first(
-                        " and\n".join("({})".format(code) for code in conjunctions),
-                        level=1,
-                    )
-                )
-            )
-
-    return textwrap.dedent(
-        """\
-        assume(
-            {}
-        )"""
-    ).format(_indent_but_first(" or \n".join(dnf_formatted)))
-
-
+@icontract.ensure(lambda result: len(result[1]) > 0 or not result[0].endswith("\n"))
 def _ghostwrite_test_function(
-    module_name: str, point: _general.FunctionPoint, explicit: Optional[Explicit]
+    module_name: str, point: _general.FunctionPoint, explicit: bool
 ) -> Tuple[str, List[str]]:
     """
     Ghostwrite a test function for the given function point.
@@ -228,115 +148,82 @@ def _ghostwrite_test_function(
     """
     test_func = ""
 
-    if explicit is None:
+    if not explicit:
         test_func = textwrap.dedent(
-            """\
-            def test_{1}(self) -> None:
-                icontract.integration.with_hypothesis.test_with_inferred_strategies(
-                        func={0}.{1})
-            """.format(
-                module_name, point.func.__name__
-            )
+            f"""\
+            def test_{point.func.__name__}(self) -> None:
+                icontract_hypothesis.test_with_inferred_strategy(
+                    {module_name}.{point.func.__name__})
+            """
         ).strip()
+        return test_func, []
 
-    elif explicit is Explicit.STRATEGIES or explicit is Explicit.STRATEGIES_AND_ASSUMES:
-        strategies = icontract_hypothesis.infer_strategies(func=point.func)
+    try:
+        strategy = icontract_hypothesis.infer_strategy(func=point.func)
+    except Exception as err:
+        return "", [
+            f"Failed to infer a search strategy for the function "
+            f"on line {point.first_row}: {point.func.__name__}. "
+            f"The exception was:\n{err}"
+        ]
 
-        if len(strategies) == 0:
-            return "", [
-                "No strategy could be inferred for the function on line {}: {}".format(
-                    point.first_row, point.func.__name__
-                )
-            ]
+    # If there is no filtering on multiple arguments, unpack the argument strategies and
+    # re-pack them into a hypothesis.given decorator with argument names as keyword arguments
+    if (
+        isinstance(strategy, hypothesis.strategies._internal.lazy.LazyStrategy)
+        and isinstance(
+            strategy.wrapped_strategy,
+            hypothesis.strategies._internal.collections.FixedKeysDictStrategy,
+        )
+        and len(strategy.wrapped_strategy.keys) > 0
+    ):
+        fixed_dict_st = strategy.wrapped_strategy
 
-        args = ", ".join(strategies.keys())
+        assert isinstance(
+            fixed_dict_st.mapped_strategy,
+            hypothesis.strategies._internal.collections.TupleStrategy,
+        )
 
         given_args_lines = []  # type: List[str]
-        for i, (arg_name, strategy) in enumerate(strategies.items()):
-            strategy_code = str(strategy)
-            for name in hypothesis.strategies.__all__:
-                prefix = "{}(".format(name)
-                if strategy_code.startswith(prefix):
-                    strategy_code = "st." + strategy_code
-                    break
 
-            if i < len(strategies) - 1:
-                given_args_lines.append("{}={},".format(arg_name, strategy_code))
-            else:
-                given_args_lines.append("{}={}".format(arg_name, strategy_code))
+        for arg_name, arg_strategy in zip(
+            fixed_dict_st.keys, fixed_dict_st.mapped_strategy.element_strategies
+        ):
+            line = f"{arg_name}={arg_strategy}"
+            assert not line.endswith("\n")
+            given_args_lines.append(line)
 
-        if explicit is Explicit.STRATEGIES:
-            test_func = (
-                textwrap.dedent(
-                    """\
-                def test_{func}(self) -> None:
-                    assume_preconditions = icontract_hypothesis.make_assume_preconditions(
-                        func={module}.{func})
-
-                    @given(
-                        {given_args})
-                    def execute({args}) -> None:
-                        assume_preconditions({args})
-                        {module}.{func}({args})
-                """
-                )
-                .format(
-                    module=module_name,
-                    func=point.func.__name__,
-                    args=args,
-                    given_args="\n".join(_indent_but_first(given_args_lines, 2)),
-                )
-                .strip()
+        given = textwrap.dedent(
+            """\
+            @given(
+                {}
+            )""".format(
+                "\n".join(given_args_lines)
             )
-
-        elif explicit is Explicit.STRATEGIES_AND_ASSUMES:
-            assume_statements = _ghostwrite_assumes(func=point.func)
-
-            if assume_statements == "":
-                test_func = (
-                    textwrap.dedent(
-                        """\
-                    def test_{func}(self) -> None:
-                        @given(
-                            {given_args})
-                        def execute({args}) -> None:
-                            {module}.{func}({args})
-                    """
-                    )
-                    .format(
-                        module=module_name,
-                        func=point.func.__name__,
-                        args=args,
-                        given_args="\n".join(_indent_but_first(given_args_lines, 2)),
-                    )
-                    .strip()
-                )
-            else:
-                test_func = (
-                    textwrap.dedent(
-                        """\
-                    def test_{func}(self) -> None:
-                        @given(
-                            {given_args})
-                        def execute({args}) -> None:
-                            {assumes}
-                            {module}.{func}({args})
-                    """
-                    )
-                    .format(
-                        module=module_name,
-                        func=point.func.__name__,
-                        args=args,
-                        assumes=_indent_but_first(assume_statements, level=2),
-                        given_args="\n".join(_indent_but_first(given_args_lines, 2)),
-                    )
-                    .strip()
-                )
-
-        else:
-            exhaustive.assert_never(explicit)
+        )
     else:
-        exhaustive.assert_never(explicit)
+        given = textwrap.dedent(
+            f"""\
+            @given(
+                {strategy}
+            )"""
+        )
+
+    assert not given.endswith("\n")
+
+    test_func = textwrap.dedent(
+        """\
+        def test_{func}(self) -> None:
+            {given}
+            def execute(kwargs) -> None:
+                {module}.{func}(**kwargs)
+
+            execute()"""
+    ).format(
+        module=module_name,
+        func=point.func.__name__,
+        given=_indent_but_first(given, level=1),
+    )
 
     return test_func, []
 
@@ -344,7 +231,7 @@ def _ghostwrite_test_function(
 def _ghostwrite_for_function_points(
     points: List[_general.FunctionPoint],
     module_name: str,
-    explicit: Optional[Explicit],
+    explicit: bool,
     bare: bool,
 ) -> Tuple[str, List[str]]:
     """
@@ -375,17 +262,13 @@ def _ghostwrite_for_function_points(
         [
             '"""Test {} with inferred Hypothesis strategies."""'.format(module_name),
             "import unittest",
-            (
-                (
-                    "import hypothesis.strategies as st\n"
-                    "from hypothesis import assume, given\n"
-                )
-                if explicit
-                else ""
-            )
-            + "import icontract_hypothesis",
-            "import {}".format(module_name),
         ]
+        + (
+            ["from hypothesis import given"]
+            if explicit
+            else ["import icontract_hypothesis"]
+        )
+        + ["import {}".format(module_name)]
     )
     blocks.append(header)
 
@@ -407,17 +290,14 @@ def _ghostwrite_for_function_points(
         test_case = [
             textwrap.dedent(
                 '''\
-                    class TestWithInferredStrategies(unittest.TestCase):
-                        """Test all functions from {module} with inferred Hypothesis strategies."""
+                class TestWithInferredStrategies(unittest.TestCase):
+                    """Test all functions from {module} with inferred Hypothesis strategies."""
 
-                        {body}
-                    '''
-            )
-            .format(
+                    {body}'''
+            ).format(
                 module=module_name,
                 body="\n".join(_indent_but_first(lines=body.splitlines(), level=1)),
             )
-            .strip()
         ]
         blocks.append("".join(test_case))
 

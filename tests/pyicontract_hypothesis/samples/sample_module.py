@@ -25,6 +25,10 @@ def another_func(x: int) -> None:
     ANOTHER_FUNC_CALLS += 1
 
 
+@icontract.require(lambda x, y: x < y, "Test multi-argument contracts")
+def yet_another_func(x: int, y: int) -> None:
+    pass
+
 # pyicontract-hypothesis: disable
 def expected_to_be_ignored(x: int) -> None:
     pass
