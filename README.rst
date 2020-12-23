@@ -138,7 +138,7 @@ to automatically test a module.
 
     usage: pyicontract-hypothesis test [-h] -p PATH
                                        [--settings [SETTINGS [SETTINGS ...]]]
-                                       [-i [INCLUDE [INCLUDE ...]]]
+                                       [--inspect] [-i [INCLUDE [INCLUDE ...]]]
                                        [-e [EXCLUDE [EXCLUDE ...]]]
 
     optional arguments:
@@ -151,6 +151,9 @@ to automatically test a module.
                             The value of the setting needs to be encoded as JSON.
 
                             Example: max_examples=500
+      --inspect             Only show the strategy and the settings
+
+                            No tests are executed.
       -i [INCLUDE [INCLUDE ...]], --include [INCLUDE [INCLUDE ...]]
                             Regular expressions, lines or line ranges of the functions to process
 

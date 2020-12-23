@@ -5,6 +5,7 @@ import io
 import os
 import pathlib
 import re
+import textwrap
 import unittest
 import uuid
 
@@ -129,6 +130,19 @@ class TestTestViaSmoke(unittest.TestCase):
         self.assertEqual("", stderr.getvalue())
         self.assertEqual(exit_code, 0)
 
+        out = re.sub("\(time delta [^)]*\)", "(time delta <erased>)", stdout.getvalue())
+
+        self.assertEqual(
+            textwrap.dedent(
+                """\
+            Tested some_func at line 10 (time delta <erased>).
+            Tested another_func at line 19 (time delta <erased>).
+            Tested yet_another_func at line 28 (time delta <erased>).
+            """
+            ),
+            out,
+        )
+
     def test_with_settings(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
         pth = this_dir / "samples" / "sample_module.py"
@@ -165,6 +179,87 @@ class TestTestViaSmoke(unittest.TestCase):
 
         self.assertEqual("", stderr.getvalue())
         self.assertEqual(exit_code, 0)
+
+
+class TestInspect(unittest.TestCase):
+    """Perform smoke testing of the "test" command."""
+
+    def test_common_case(self) -> None:
+        this_dir = pathlib.Path(os.path.realpath(__file__)).parent
+        pth = this_dir / "samples" / "sample_module.py"
+
+        argv = ["test", "--inspect", "--path", str(pth)]
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        # This is merely a smoke test.
+        exit_code = main.run(argv=argv, stdout=stdout, stderr=stderr)
+
+        self.assertEqual("", stderr.getvalue())
+        self.assertEqual(exit_code, 0)
+
+        self.assertEqual(
+            textwrap.dedent(
+                """\
+            some_func at line 10:
+               hypothesis.given(
+                   fixed_dictionaries({'x': integers(min_value=1)})
+               )
+            
+            another_func at line 19:
+               hypothesis.given(
+                   fixed_dictionaries({'x': integers(min_value=1).filter(lambda x: square_greater_than_zero(x))})
+               )
+            
+            yet_another_func at line 28:
+               hypothesis.given(
+                   fixed_dictionaries({'x': integers(), 'y': integers()}).filter(lambda d: d['x'] < d['y'])
+               )
+            """
+            ),
+            stdout.getvalue(),
+        )
+
+    def test_with_settings(self) -> None:
+        this_dir = pathlib.Path(os.path.realpath(__file__)).parent
+        pth = this_dir / "samples" / "sample_module.py"
+
+        argv = ["test", "--inspect", "--path", str(pth), "--settings", "max_examples=5"]
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        # This is merely a smoke test.
+        exit_code = main.run(argv=argv, stdout=stdout, stderr=stderr)
+
+        self.assertEqual("", stderr.getvalue())
+        self.assertEqual(exit_code, 0)
+
+        self.assertEqual(
+            textwrap.dedent(
+                """\
+            some_func at line 10:
+               hypothesis.given(
+                   fixed_dictionaries({'x': integers(min_value=1)})
+               )
+               hypothesis.settings({'max_examples': 5})
+            
+            another_func at line 19:
+               hypothesis.given(
+                   fixed_dictionaries({'x': integers(min_value=1).filter(lambda x: square_greater_than_zero(x))})
+               )
+               hypothesis.settings({'max_examples': 5})
+            
+            yet_another_func at line 28:
+               hypothesis.given(
+                   fixed_dictionaries({'x': integers(), 'y': integers()}).filter(lambda d: d['x'] < d['y'])
+               )
+               hypothesis.settings({'max_examples': 5})
+            """
+            ),
+            stdout.getvalue(),
+        )
 
 
 if __name__ == "__main__":
