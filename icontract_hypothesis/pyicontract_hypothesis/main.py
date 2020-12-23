@@ -89,6 +89,17 @@ def _make_argument_parser() -> argparse.ArgumentParser:
         nargs="*",
     )
 
+    test_parser.add_argument(
+        "--inspect",
+        help=textwrap.dedent(
+            """\
+            Only show the strategy and the settings
+
+            No tests are executed."""
+        ),
+        action="store_true",
+    )
+
     ghostwriter_parser = subparsers.add_parser(
         "ghostwrite",
         help="Ghostwrite the unit tests with inferred search strategies",
@@ -244,7 +255,9 @@ def run(argv: List[str], stdout: TextIO, stderr: TextIO) -> int:
     assert params is not None
 
     if isinstance(params.command, _test.Params):
-        errors = _test.test(general=params.general, command=params.command)
+        errors = _test.test(
+            general=params.general, command=params.command, stdout=stdout
+        )
     elif isinstance(params.command, _ghostwrite.Params):
         code, errors = _ghostwrite.ghostwrite(
             general=params.general, command=params.command
