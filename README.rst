@@ -33,7 +33,7 @@ You can use icontract-hypothesis:
 
 * As a library, to write succinct unit tests,
 * As a command-line tool or a tool to integrate it with your IDE
-  (*e.g.*, `icontract-hypothesis-vim <https://github.com/mristin/icontract-hypothesis-vim>`_
+  (*e.g.*, `icontract-hypothesis-vim <https://github.com/mristin/icontract-hypothesis-vim>`__
   for Vim).
   This allows you to automatically test functions during the development and
   use it in your continuous integration,
@@ -302,7 +302,7 @@ named tuples *etc*.). If your class enforces pre-conditions in the constructor
 method (``__init__``), make sure that it inherits from ``icontract.DBC``.
 
 That way icontract-hypothesis will use
-`hypothesis.strategies.register_type_strategy <https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.register_type_strategy>`_
+`hypothesis.strategies.register_type_strategy <https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.register_type_strategy>`__
 to register your class with Hypothesis and consider pre-conditions when building
 its instances.
 
@@ -319,12 +319,12 @@ and
 
 Many times default inferred strategies for the constructors should be enough, though you
 are of course not restricted to them. You can register your own strategies with
-`hypothesis.strategies.register_type_strategy <https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.register_type_strategy>`_
+`hypothesis.strategies.register_type_strategy <https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.register_type_strategy>`__
 . Icontract-hypothesis will respect the previous registrations and will not overwrite them.
 
 IDE plug-ins
 ------------
-* `icontract-hypothesis-vim <https://github.com/mristin/icontract-hypothesis-vim>`_ for VIM
+* `icontract-hypothesis-vim <https://github.com/mristin/icontract-hypothesis-vim>`__ for VIM
 
 
 Related Libraries
