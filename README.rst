@@ -32,14 +32,18 @@ goes.
 You can use icontract-hypothesis:
 
 * As a library, to write succinct unit tests,
-* As a command-line tool or a tool to integrate it with your IDE.
+* As a command-line tool or a tool to integrate it with your IDE
+  (*e.g.*, `icontract-hypothesis-vim <https://github.com/mristin/icontract-hypothesis-vim>`_
+  for Vim).
   This allows you to automatically test functions during the development and
-  use it in your continuous integration, and
+  use it in your continuous integration,
 * As a ghostwriter utility giving you a starting point for your more elaborate
   Hypothesis strategies.
 
+
 Since the contracts live close to the code, evolving the code also automatically
 evolves the tests.
+
 
 Usage
 -----
@@ -285,6 +289,12 @@ There is an ongoing effort to move the strategy matching code into Hypothesis an
 develop it further to include many more cases. See
 `this Hypothesis issue <https://github.com/HypothesisWorks/hypothesis/issues/2701>`_.
 
+Note that static analysis of the source code may not determine all the defined names in various
+scopes as they can also be injected dynamically (*e.g.*, setting ``__globals__`` attribute or
+``globals()[random.choice("abc")] = 1``).
+As long as you keep fancy dynamic acrobatics out of your contracts,
+the strategy inference by icontract-hypothesis should work fine.
+
 Classes
 ~~~~~~~
 Hypothesis automatically builds composite input arguments (classes, dataclasses,
@@ -296,12 +306,26 @@ That way icontract-hypothesis will use
 to register your class with Hypothesis and consider pre-conditions when building
 its instances.
 
-It is important that you do *not* use ``hypothesis.strategies.builds(.)`` with
-the classes using contracts in their constructors as ``builds`` will disregard the registered
-strategy. You should use ``hypothesis.strategies.from_type(.)`` instead. See
+It is important that you should *not* use
+`hypothesis.strategies.builds <https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.builds>`_
+with the classes using contracts in their constructors as
+`builds <https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.builds>`_
+will disregard the registered strategy. You should use
+`hypothesis.strategies.from_type <https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.from_type>`_
+instead. See
 `this comment on an Hypothesis issue <https://github.com/HypothesisWorks/hypothesis/issues/2708#issuecomment-749393747>`_
 and
 `the corresponding answer <https://github.com/HypothesisWorks/hypothesis/issues/2708#issuecomment-749397758>`_.
+
+Many times default inferred strategies for the constructors should be enough, though you
+are of course not restricted to them. You can register your own strategies with
+`hypothesis.strategies.register_type_strategy <https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.register_type_strategy>`_
+. Icontract-hypothesis will respect the previous registrations and will not overwrite them.
+
+IDE plug-ins
+------------
+* `icontract-hypothesis-vim <https://github.com/mristin/icontract-hypothesis-vim>`_ for VIM
+
 
 Related Libraries
 -----------------
