@@ -40,10 +40,8 @@ You can use icontract-hypothesis:
 * As a ghostwriter utility giving you a starting point for your more elaborate
   Hypothesis strategies.
 
-
 Since the contracts live close to the code, evolving the code also automatically
 evolves the tests.
-
 
 Usage
 -----
@@ -339,17 +337,50 @@ respectively).
 
 As of 2020-12-16:
 
-* Neither of the two libraries handles behavioral sub-typing correctly
-  (*i.e.*, they do not weaken and strengthen the pre-conditions, and
-  post-conditions and invariants, respectively).
-  Hence they can not be used with class hierarchies as the contracts are not
-  properly inherited.
-* They only provide rejection sampling which is insufficient for many practical
-  use cases. For example, the computational time grows exponentially with the
-  number of arguments (see Section "Search Strategies").
-* Finally, the existing libraries do not propagate pre-conditions of
-  constructors to Hypothesis so testing with composite inputs (such as instances
-  of classes) is currently not possible with these two libraries.
+**Behavioral subtyping.** Neither of the two libraries handles behavioral sub-typing correctly
+(*i.e.*, they do not weaken and strengthen the pre-conditions, and
+post-conditions and invariants, respectively).
+Hence they can not be used with class hierarchies as the contracts are not
+properly inherited.
+
+This is not strictly related to property-based testing,
+but presents an inherent flaw in how they implement contracts.
+Hence even if you manually supply a search strategy that
+fulfills behavioral subtyping, these two libraries would
+report (or ignore) an error.
+
+Consider this example with `deal <https://github.com/life4/deal>`__:
+
+.. code-block:: Python
+
+    class A:
+        @deal.post(lambda result: result % 2 == 0)
+        def some_func(self) -> int:
+            return 2
+
+    class B(A):
+        @deal.post(lambda result: result % 3 == 0)
+        def some_func(self) -> int:
+            # The result 9 satisfies the postcondition of B.some_func,
+            # but not the postcondition of A.some_func thus
+            # breaking the behavioral subtyping.
+            return 9
+
+    b = B()
+    # The correct behavior would be to throw an exception here.
+    b.some_func()
+
+
+**Rejection sampling.** The two libraries only provide rejection sampling which is insufficient
+for many practical use cases. For example, the computational time grows exponentially with the
+number of arguments (see Section "Search Strategies").
+
+**Propagation of contracts.** Finally, the existing libraries do not automatically propagate
+pre-conditions of constructors to Hypothesis so automatic testing with composite inputs
+(such as instances of classes) is currently not possible with these two libraries. The user can,
+of course, manually design search strategies that satisfy the contracts.
+In contrast, icontract-hypothesis does that hard-lifting for you automatically.
+
 
 Benchmarks
 ~~~~~~~~~~
