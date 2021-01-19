@@ -74,6 +74,11 @@ def main() -> int:
 
     print("Doctesting...")
     for pth in (repo_root / "icontract_hypothesis").glob("**/*.py"):
+        # ``__main__.py``'s cause doctest to go banana, so we need to skip them;
+        # see https://stackoverflow.com/questions/58731519/doctest-fails-on-main-py
+        if pth.name == "__main__.py":
+            continue
+
         subprocess.check_call([sys.executable, "-m", "doctest", str(pth)])
     subprocess.check_call([sys.executable, "-m", "doctest", "README.rst"])
 

@@ -242,6 +242,29 @@ that generates a first draft based on pre-conditions that you manually refine fu
 The examples of ghostwritten tests are available at:
 `tests/pyicontract_hypothesis/samples <https://github.com/mristin/icontract-hypothesis/blob/main/tests/pyicontract_hypothesis/samples>`_
 
+Running Tools as Module
+~~~~~~~~~~~~~~~~~~~~~~~
+
+If for some reason you want to run the tools as a module, just invoke:
+
+.. Help starts: python -m icontract_hypothesis --help
+.. code-block::
+
+    usage: icontract_hypothesis [-h] {test,ghostwrite} ...
+
+    Combine property-based testing with contracts of a Python module.
+
+    positional arguments:
+      {test,ghostwrite}  Commands
+        test             Test the functions automatically by inferring search
+                         strategies from preconditions
+        ghostwrite       Ghostwrite the unit tests with inferred search strategies
+
+    optional arguments:
+      -h, --help         show this help message and exit
+
+.. Help ends: python -m icontract_hypothesis --help
+
 Installation
 ------------
 icontract-hypothesis is available on PyPI at

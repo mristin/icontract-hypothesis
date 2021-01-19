@@ -59,9 +59,15 @@ def _parse_args_to_params(
     return Params(general=general, command=command), []
 
 
-def _make_argument_parser() -> argparse.ArgumentParser:
-    """Create an instance of the argument parser to parse command-line arguments."""
-    parser = argparse.ArgumentParser(prog="pyicontract-hypothesis", description=__doc__)
+def _make_argument_parser(
+    prog: str = "pyicontract-hypothesis",
+) -> argparse.ArgumentParser:
+    """
+    Create an instance of the argument parser to parse command-line arguments.
+
+    :param prog: name of the program to be displayed in help
+    """
+    parser = argparse.ArgumentParser(prog=prog, description=__doc__)
     subparsers = parser.add_subparsers(help="Commands", dest="command")
     subparsers.required = True
 
@@ -233,9 +239,22 @@ def assert_never(something: NoReturn) -> NoReturn:
     assert False, "Unhandled type: {}".format(type(something).__name__)
 
 
-def run(argv: List[str], stdout: TextIO, stderr: TextIO) -> int:
-    """Execute the run routine."""
-    parser = _make_argument_parser()
+def run(
+    argv: List[str],
+    stdout: TextIO,
+    stderr: TextIO,
+    prog: str = "pyicontract-hypothesis",
+) -> int:
+    """
+    Execute the run routine.
+
+    :param argv: list of command-line arguments
+    :param stdout: stream to write the output to
+    :param stderr: stream to write the error output to
+    :param prog: name of the program to be displayed in help
+    :return: exit code
+    """
+    parser = _make_argument_parser(prog=prog)
     args, out, err = _parse_args(parser=parser, argv=argv)
     if len(out) > 0:
         stdout.write(out)
@@ -279,8 +298,17 @@ def run(argv: List[str], stdout: TextIO, stderr: TextIO) -> int:
 
 
 def entry_point() -> int:
-    """Wrap the entry_point routine wit default arguments."""
-    return run(argv=sys.argv[1:], stdout=sys.stdout, stderr=sys.stderr)
+    """
+    Wrap the entry_point routine wit default arguments.
+
+    :return: exit code
+    """
+    return run(
+        argv=sys.argv[1:],
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+        prog="pyicontract-hypothesis",
+    )
 
 
 if __name__ == "__main__":
