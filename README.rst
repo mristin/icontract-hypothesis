@@ -32,9 +32,10 @@ goes.
 You can use icontract-hypothesis:
 
 * As a library, to write succinct unit tests,
-* As a command-line tool or a tool to integrate it with your IDE
+* As a command-line tool or as a tool integrated in your IDE
   (*e.g.*, `icontract-hypothesis-vim <https://github.com/mristin/icontract-hypothesis-vim>`__
-  for Vim).
+  and `icontract-hypothesis-pycharm <https://github.com/mristin/icontract-hypothesis-pycharm>`__).
+
   This allows you to automatically test functions during the development and
   use it in your continuous integration,
 * As a ghostwriter utility giving you a starting point for your more elaborate
@@ -343,10 +344,12 @@ are of course not restricted to them. You can register your own strategies with
 `hypothesis.strategies.register_type_strategy <https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.register_type_strategy>`__
 . Icontract-hypothesis will respect the previous registrations and will not overwrite them.
 
-IDE plug-ins
+IDE Plug-ins
 ------------
-* `icontract-hypothesis-vim <https://github.com/mristin/icontract-hypothesis-vim>`__ for VIM
-
+* `icontract-hypothesis-vim <https://github.com/mristin/icontract-hypothesis-vim>`__ for
+  `VIM <https://www.vim.org/>`_
+* `icontract-hypothesis-pycharm <https://github.com/mristin/icontract-hypothesis-pycharm>`__ for
+  `PyCharm <https://www.jetbrains.com/pycharm/>`_
 
 Related Libraries
 -----------------
