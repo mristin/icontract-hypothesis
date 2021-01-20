@@ -41,8 +41,14 @@ def main() -> int:
 
             expected = lines[i + 1 : end_index]
 
+            command_parts = command.split(" ")
+            if command_parts[0] in ["python", "python3"]:
+                # We need to replace "python" with "sys.executable" on Windows as the environment
+                # is not properly inherited.
+                command_parts[0] = sys.executable
+
             proc = subprocess.Popen(
-                command.split(" "),
+                command_parts,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 encoding="utf-8",
