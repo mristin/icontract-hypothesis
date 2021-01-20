@@ -21,14 +21,14 @@ with open(os.path.join(here, "requirements.txt"), encoding="utf-8") as fid:
 
 setup(
     name="icontract-hypothesis",
-    version="0.0.2",
+    version="1.0.0",
     description="Combine contracts and automatic testing.",
     long_description=long_description,
     url="https://github.com/mristin/icontract-hypothesis",
     author="Marko Ristin",
     author_email="marko@ristin.ch",
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",

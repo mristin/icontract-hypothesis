@@ -1,6 +1,3 @@
-THIS PACKAGE IS STILL ALPHA AND HAS NOT BEEN PUBLISHED!
-PLEASE DO NOT USE IT YET!
-
 icontract-hypothesis
 ====================
 
