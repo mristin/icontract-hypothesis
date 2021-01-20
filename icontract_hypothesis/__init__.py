@@ -715,6 +715,7 @@ def _infer_strategy_for_argument(
         return hypothesis.strategies.from_type(type_hint)
 
     strategy = None  # type: Optional[hypothesis.strategies.SearchStrategy[Any]]
+    remaining_contracts = contracts
 
     if type_hint in [
         int,
@@ -746,12 +747,12 @@ def _infer_strategy_for_argument(
             a_type=type_hint, inferred=inferred
         )
 
-    elif type_hint == str:
+    if strategy is None and type_hint == str:
         strategy, remaining_contracts = _infer_str_strategy_from_preconditions(
             arg_name=arg_name, contracts=contracts
         )
 
-    else:
+    if strategy is None:
         strategy = hypothesis.strategies.from_type(type_hint)
         remaining_contracts = contracts
 

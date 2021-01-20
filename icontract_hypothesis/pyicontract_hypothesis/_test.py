@@ -215,12 +215,18 @@ def _test_function_point(
 
     try:
         strategy = icontract_hypothesis.infer_strategy(func=func)
+    except AssertionError:
+        raise
     except Exception as error:
+        error_as_str = str(error)
+        if error_as_str == "":
+            error_as_str = str(type(error))
+
         errors.append(
             (
                 "Inference of the search strategy failed for the function: {}. "
                 "The error was: {}"
-            ).format(func, error)
+            ).format(func, error_as_str)
         )
         return errors
 

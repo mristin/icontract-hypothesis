@@ -69,6 +69,21 @@ class TestWithInferredStrategies(unittest.TestCase):
 
         icontract_hypothesis.test_with_inferred_strategy(some_func)
 
+    def test_resorting_to_from_type(self) -> None:
+        # We can not handle ``.startswith`` at the moment, so we expect
+        # ``from_type`` Hypothesis strategy followed by a filter.
+        @icontract.require(lambda x: x.startswith("oioi"))
+        def some_func(x: str) -> None:
+            pass
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+        self.assertEqual(
+            "fixed_dictionaries({'x': text().filter(lambda x: x.startswith(\"oioi\"))})",
+            str(strategy),
+        )
+
+        # We explicitly do not test with this strategy as it will not pass the health check.
+
     def test_snippet_given(self) -> None:
         @icontract.require(lambda x, y: x < y)
         def some_func(x: float, y: float) -> None:
