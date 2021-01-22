@@ -71,61 +71,6 @@ def parse_readme(lines: List[str]) -> Tuple[List[Block], List[str]]:
     return blocks, errors
 
 
-# TODO: move this to main
-"""
-            command_parts = command.split(" ")
-            if command_parts[0] in ["python", "python3"]:
-                # We need to replace "python" with "sys.executable" on Windows as the environment
-                # is not properly inherited.
-                command_parts[0] = sys.executable
-
-            proc = subprocess.Popen(
-                command_parts,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                encoding="utf-8",
-            )
-            output, err = proc.communicate()
-
-            output_lines = output.splitlines()
-            for i in range(len(output_lines)):
-                if len(output_lines[i]) > 0:
-                    output_lines[i] = "    " + output_lines[i]
-            output_lines.insert(0, ".. code-block::")
-            output_lines.insert(1, "")
-            output_lines.append("")
-
-            output_lines = [line.rstrip() for line in output_lines]
-
-            expected = lines[i + 1: end_index]
-            expected = [line.rstrip() for line in expected]
-            if output_lines != expected:
-                print("Expected:", file=sys.stderr)
-                for i, line in enumerate(expected):
-                    if i >= len(output_lines) or line != output_lines[i]:
-                        print("DIFF: {:2d}: {!r}".format(i, line))
-                    else:
-                        print("OK  : {:2d}: {!r}".format(i, line))
-
-                print("Got:", file=sys.stderr)
-                for i, line in enumerate(output_lines):
-                    if i >= len(expected) or line != expected[i]:
-                        print("DIFF: {:2d}: {!r}".format(i, line))
-                    else:
-                        print("OK  : {:2d}: {!r}".format(i, line))
-
-                print("Got (raw output):\n", file=sys.stderr)
-                print(output, file=sys.stderr)
-
-                print("Got (raw error):\n", file=sys.stderr)
-                for line in err.splitlines():
-                    print("ERROR: {}".format(line))
-
-                return -1
-
-"""
-
-
 def capture_output_lines(command: str) -> List[str]:
     """Capture the output of a help command."""
     command_parts = command.split(" ")
@@ -252,6 +197,8 @@ def main() -> int:
             if error:
                 print(error, file=sys.stderr)
                 return -1
+
+    return 0
 
     return 0
 

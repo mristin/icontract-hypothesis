@@ -3,6 +3,8 @@ import argparse
 import enum
 import inspect
 import pathlib
+import re
+import sys
 import textwrap
 from typing import Optional, Tuple, List, overload, Union, Callable, Any, cast
 
@@ -16,18 +18,22 @@ import icontract_hypothesis
 import icontract_hypothesis.pyicontract_hypothesis._general as _general
 
 
+@icontract.invariant(lambda self: (self.module_name is None) ^ (self.path is None))
 class Params:
     """Represent parameters of the command "ghostwrite"."""
 
+    @icontract.require(lambda module_name, path: (module_name is None) ^ (path is None))
     def __init__(
         self,
-        module_name: str,
+        module_name: Optional[str],
+        path: Optional[pathlib.Path],
         output: Optional[pathlib.Path],
         explicit: bool,
         bare: bool,
     ) -> None:
         """Initialize with the given values."""
         self.module_name = module_name
+        self.path = path
         self.output = output
         self.explicit = explicit
         self.bare = bare
@@ -41,9 +47,18 @@ def parse_params(args: argparse.Namespace) -> Tuple[Optional[Params], List[str]]
     """
     output = pathlib.Path(args.output) if args.output != "-" else None
 
+    path = None  # type: Optional[pathlib.Path]
+
+    if args.path is not None:
+        try:
+            path = pathlib.Path(args.path)
+        except Exception as err:
+            return None, [f"Failed to parse --path {args.path!r}: {err}"]
+
     return (
         Params(
             module_name=args.module,
+            path=path,
             output=output,
             explicit=args.explicit,
             bare=args.bare,
@@ -313,20 +328,102 @@ def _ghostwrite_for_function_points(
     return "\n\n\n".join(blocks), []
 
 
+_IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z_0-9]*$")
+
+
+def _qualified_module_name_from_path(path: pathlib.Path, sys_path: List[str]) -> str:
+    """
+    Infer the qualified (dotted) module name from its path.
+
+    If the path does not point to a proper Python module, the module name is computed
+    as the stem of the ``path`` with all the non-identifier characters replaced by an
+    underscore ("_").
+
+    :param path: to the module
+    :param sys_path: the value of ``sys.path``
+    """
+    stem = path.stem
+    if (
+        not _IDENTIFIER_RE.match(stem)
+        or path.parent == pathlib.Path()
+        or path.suffix != ".py"
+    ):
+        qualified_name = re.sub(r"[^A-Za-z0-9_]", "_", stem)
+    else:
+        sys_path_set = set(sys_path)
+        ancestor_in_sys_path = False
+
+        if path.name == "__init__.py":
+            # Go one level up the directory path as the module name comes from the base directory
+            reversed_parts = [path.parent.stem]
+            ancestors = path.parent.parents
+        else:
+            # Start from the file as the base directory refers to the parent module
+            reversed_parts = [stem]
+            ancestors = path.parents
+
+        for ancestor in ancestors:
+            if str(ancestor) in sys_path_set:
+                ancestor_in_sys_path = True
+                break
+
+            # Check to see if the ancestor is a proper Python parent module
+            if (
+                not _IDENTIFIER_RE.match(ancestor.stem)
+                or not (ancestor / "__init__.py").exists()
+            ):
+                break
+
+            # Continue to see if we can reach one of the paths in sys.path
+            reversed_parts.append(ancestor.stem)
+
+        if ancestor_in_sys_path:
+            qualified_name = ".".join(reversed(reversed_parts))
+        else:
+            qualified_name = re.sub(r"[^A-Za-z0-9_]", "_", stem)
+
+    return qualified_name
+
+
 def ghostwrite(general: _general.Params, command: Params) -> Tuple[str, List[str]]:
     """
     Write a unit test module for the specified functions.
 
     Return (generated code, errors if any).
     """
-    mod, errors = _general.load_module_with_name(command.module_name)
+    if command.module_name is not None:
+        mod, errors = _general.load_module_with_name(command.module_name)
+    elif command.path is not None:
+        mod, errors = _general.load_module_from_source_file(path=command.path)
+    else:
+        raise AssertionError(
+            f"Unexpected execution path. The command was: {command.__dict__!r}"
+        )
+
     if errors:
         return "", errors
 
     assert mod is not None
 
+    ##
+    # Load the source code
+    ##
+
+    if command.module_name is not None:
+        source_code = inspect.getsource(mod)
+    elif command.path is not None:
+        source_code = command.path.read_text()
+    else:
+        raise AssertionError(
+            f"Unexpected execution path. The command was: {command.__dict__!r}"
+        )
+
+    ##
+    # Select points
+    ##
+
     points, errors = _general.select_function_points(
-        source_code=inspect.getsource(mod),
+        source_code=source_code,
         mod=mod,
         include=general.include,
         exclude=general.exclude,
@@ -334,9 +431,28 @@ def ghostwrite(general: _general.Params, command: Params) -> Tuple[str, List[str
     if errors:
         return "", errors
 
+    ##
+    # Figure out the qualified name of the module
+    ##
+
+    if command.module_name is not None:
+        qualified_name = command.module_name
+    elif command.path is not None:
+        qualified_name = _qualified_module_name_from_path(
+            path=command.path, sys_path=sys.path
+        )
+    else:
+        raise AssertionError(
+            f"Unexpected execution path. The command was: {command.__dict__!r}"
+        )
+
+    ##
+    # Ghostwrite
+    ##
+
     return _ghostwrite_for_function_points(
         points=points,
-        module_name=command.module_name,
+        module_name=qualified_name,
         explicit=command.explicit,
         bare=command.bare,
     )
