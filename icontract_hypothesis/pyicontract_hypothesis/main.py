@@ -112,8 +112,25 @@ def _make_argument_parser(
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
-    ghostwriter_parser.add_argument(
-        "-m", "--module", help="Module to process", required=True
+    input_group = ghostwriter_parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument(
+        "-m", "--module", help="Module to ghostwrite the unit tests for"
+    )
+    input_group.add_argument(
+        "-p",
+        "--path",
+        help=textwrap.dedent(
+            """\
+            Path to the module to ghostwrite the unit tests for.
+
+            If the file represents a module reachable through
+            sys.path, use the qualified module name in
+            the unit test.
+
+            Otherwise, the module is represented as the stem
+            of the path with all non-identifier characters
+            replaced with an underscore ("_")."""
+        ),
     )
 
     ghostwriter_parser.add_argument(
