@@ -21,7 +21,7 @@ with open(os.path.join(here, "requirements.txt"), encoding="utf-8") as fid:
 
 setup(
     name="icontract-hypothesis",
-    version="1.0.0",
+    version="1.1.0",
     description="Combine contracts and automatic testing.",
     long_description=long_description,
     url="https://github.com/mristin/icontract-hypothesis",
