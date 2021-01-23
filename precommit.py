@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run precommit checks on the repository."""
+"""Run pre-commit checks on the repository."""
 import argparse
 import os
 import pathlib
@@ -9,17 +9,23 @@ import sys
 
 def main() -> int:
     """"Execute entry_point routine."""
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--overwrite",
         help="Overwrites the unformatted source files with the well-formatted code in place. "
         "If not set, an exception is raised if any of the files do not conform to the style guide.",
         action="store_true",
     )
+    parser.add_argument(
+        "--skip_test",
+        help="If set, the unit tests are not run.",
+        action="store_true",
+    )
 
     args = parser.parse_args()
 
     overwrite = bool(args.overwrite)
+    skip_test = bool(args.skip_test)
 
     repo_root = pathlib.Path(__file__).parent
 
@@ -52,25 +58,26 @@ def main() -> int:
     print("Pydocstyle'ing...")
     subprocess.check_call(["pydocstyle", "icontract_hypothesis"], cwd=str(repo_root))
 
-    print("Testing...")
-    env = os.environ.copy()
-    env["ICONTRACT_SLOW"] = "true"
+    if not skip_test:
+        print("Testing...")
+        env = os.environ.copy()
+        env["ICONTRACT_SLOW"] = "true"
 
-    subprocess.check_call(
-        [
-            "coverage",
-            "run",
-            "--source",
-            "icontract_hypothesis",
-            "-m",
-            "unittest",
-            "discover",
-        ],
-        cwd=str(repo_root),
-        env=env,
-    )
+        subprocess.check_call(
+            [
+                "coverage",
+                "run",
+                "--source",
+                "icontract_hypothesis",
+                "-m",
+                "unittest",
+                "discover",
+            ],
+            cwd=str(repo_root),
+            env=env,
+        )
 
-    subprocess.check_call(["coverage", "report"])
+        subprocess.check_call(["coverage", "report"])
 
     print("Doctesting...")
     for pth in (repo_root / "icontract_hypothesis").glob("**/*.py"):
