@@ -34,8 +34,9 @@ You can use icontract-hypothesis:
 
 * As a library, to write succinct unit tests,
 * As a command-line tool or as a tool integrated in your IDE
-  (*e.g.*, `icontract-hypothesis-vim <https://github.com/mristin/icontract-hypothesis-vim>`__
-  and `icontract-hypothesis-pycharm <https://github.com/mristin/icontract-hypothesis-pycharm>`__).
+  (*e.g.*, `icontract-hypothesis-vim <https://github.com/mristin/icontract-hypothesis-vim>`__,
+  `icontract-hypothesis-pycharm <https://github.com/mristin/icontract-hypothesis-pycharm>`__ and
+  `icontract-hypothesis-vscode <https://github.com/mristin/icontract-hypothesis-vscode>`__).
 
   This allows you to automatically test functions during the development and
   use it in your continuous integration,
@@ -360,6 +361,8 @@ IDE Plug-ins
   `VIM <https://www.vim.org/>`_
 * `icontract-hypothesis-pycharm <https://github.com/mristin/icontract-hypothesis-pycharm>`__ for
   `PyCharm <https://www.jetbrains.com/pycharm/>`_
+* `icontract-hypothesis-vscode <https://github.com/mristin/icontract-hypothesis-vscode>`__ for
+  `Visual Studio Code <https://code.visualstudio.com/>`_
 
 Related Libraries
 -----------------
