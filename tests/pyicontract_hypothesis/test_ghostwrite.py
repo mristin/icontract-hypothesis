@@ -9,6 +9,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from typing import List
 
 from icontract_hypothesis.pyicontract_hypothesis import _general, _ghostwrite, main
 
@@ -309,6 +310,41 @@ class TestGhostwrite(unittest.TestCase):
             )
         )
 
+        expected = expected_pth.read_text()
+        self.assertEqual(expected, stdout.getvalue())
+
+    def test_well_formatted_with_two_arguments(self) -> None:
+        # This test is related to the issue:
+        # https://github.com/mristin/icontract-hypothesis/issues/29
+        # fmt: off
+        argv = [
+            "ghostwrite",
+            "--module",
+            "tests.pyicontract_hypothesis.samples.well_formatted_with_two_arguments",
+            "--explicit"
+        ]
+        # fmt: on
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        exit_code = main.run(argv=argv, stdout=stdout, stderr=stderr)
+
+        self.assertEqual("", stderr.getvalue())
+        self.assertEqual(exit_code, 0)
+
+        this_dir = pathlib.Path(os.path.realpath(__file__)).parent
+        expected_pth = (
+            this_dir
+            / "samples"
+            / "expected_ghostwrites"
+            / (
+                "for_{}.py".format(
+                    TestGhostwrite.test_well_formatted_with_two_arguments.__name__
+                )
+            )
+        )
+        expected_pth.write_text(stdout.getvalue())  # TODO: debug
         expected = expected_pth.read_text()
         self.assertEqual(expected, stdout.getvalue())
 

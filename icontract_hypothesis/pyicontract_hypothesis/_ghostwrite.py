@@ -212,10 +212,8 @@ def _ghostwrite_test_function(
             """\
             @given(
                 {}
-            )""".format(
-                "\n".join(given_args_lines)
-            )
-        )
+            )"""
+        ).format(_indent_but_first(",\n".join(given_args_lines), level=1))
     else:
         given = textwrap.dedent(
             f"""\
@@ -224,6 +222,9 @@ def _ghostwrite_test_function(
             )"""
         )
 
+    assert not re.match(
+        r"^\s", given
+    ), f"Unexpected whitespace at the begining of given: {given!r}"
     assert not given.endswith("\n")
 
     test_func = textwrap.dedent(
