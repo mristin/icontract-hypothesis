@@ -49,7 +49,7 @@ import icontract._represent
 import icontract._types
 
 # Don't forget to update the version in setup.py!
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 __author__ = "Marko Ristin"
 __copyright__ = "Copyright 2020 Marko Ristin"
 __license__ = "MIT"
