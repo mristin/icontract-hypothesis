@@ -223,10 +223,8 @@ def _test_function_point(
             error_as_str = str(type(error))
 
         errors.append(
-            (
-                "Inference of the search strategy failed for the function: {}. "
-                "The error was: {}"
-            ).format(func, error_as_str)
+            f"Inference of the search strategy failed for the function: {func}. "
+            f"The error was: {error_as_str}"
         )
         return errors
 
@@ -237,7 +235,14 @@ def _test_function_point(
     if hypothesis_settings:
         wrapped = hypothesis_settings(wrapped)
 
-    wrapped()
+    try:
+        wrapped()
+    except hypothesis.errors.FailedHealthCheck as err:
+        return [
+            f"Failed to test the function: "
+            f"{func.__name__} from {inspect.getfile(func)} "
+            f"due to the failed Hypothesis health check: {err}"
+        ]
 
     return []
 
