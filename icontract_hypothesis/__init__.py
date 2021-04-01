@@ -9,6 +9,7 @@ You need to install ``hypothesis`` extras in order to use this module.
 # pylint: disable=too-many-lines
 
 import ast
+import copy
 import datetime
 import decimal
 import dis
@@ -759,6 +760,26 @@ def _infer_strategy_for_argument(
     assert strategy is not None
 
     for contract in remaining_contracts:
+        # Since ``hypothesis.internal.reflection.extract_lambda_source`` is quite
+        # limited (as of 2021-04-01), we need to replace the representation of
+        # the condition with our own source code.
+        #
+        # For example, a multi-line condition such as ``lambda lst: all(...)`` will be
+        # rendered as ``lambda lst: <unknown>``.
+        lambda_inspection = icontract._represent.inspect_lambda_condition(
+            condition=contract.condition
+        )
+
+        if lambda_inspection is not None:
+            # As this attribute is non-invasive, we polute the original condition.
+            if not hasattr(contract.condition, "__icontract_hypothesis_source_code__"):
+                condition_repr = lambda_inspection.atok.get_text(lambda_inspection.node)
+                setattr(
+                    contract.condition,
+                    "__icontract_hypothesis_source_code__",
+                    condition_repr,
+                )
+
         strategy = strategy.filter(contract.condition)
 
     return strategy
