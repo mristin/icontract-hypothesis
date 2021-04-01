@@ -10,6 +10,7 @@ import enum
 import math
 import re
 import sys
+import textwrap
 import unittest
 from typing import List, NamedTuple, Union, Optional, Any, Mapping
 
@@ -129,11 +130,12 @@ class TestWithInferredStrategies(unittest.TestCase):
 
         strategy = icontract_hypothesis.infer_strategy(some_func)
         self.assertEqual(
-            "fixed_dictionaries({'x': floats(), 'y': floats()}).filter(lambda d: SOME_CONSTANT\n"
-            "    < d['x'] - 512\n"
-            "    < SOME_GLOBAL_CONST\n"
-            "    < d['y'] + 512\n"
-            "    < ANOTHER_CONSTANT)",
+            """\
+fixed_dictionaries({'x': floats(), 'y': floats()}).filter(lambda d: SOME_CONSTANT
+    < d['x'] - 512
+    < SOME_GLOBAL_CONST
+    < d['y'] + 512
+    < ANOTHER_CONSTANT)""",
             str(strategy),
         )
 
@@ -649,6 +651,80 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
         )
 
         icontract_hypothesis.test_with_inferred_strategy(some_func)
+
+
+class TestRepresentationOfCondition(unittest.TestCase):
+    def test_that_a_single_line_condition_renders_correctly(self) -> None:
+        # This test case was adapted from a solution for Advent of Code, day 8.
+        class Operation(enum.Enum):
+            NOP = "nop"
+            ACC = "acc"
+            JMP = "jmp"
+
+        @dataclasses.dataclass
+        class Instruction:
+            operation: Operation
+            argument: int
+
+        @icontract.require(lambda instructions: len(instructions) < 10)
+        def execute_instructions(instructions: List[Instruction]) -> Optional[int]:
+            ...
+
+        strategy = icontract_hypothesis.infer_strategy(execute_instructions)
+        self.assertEqual(
+            "fixed_dictionaries("
+            "{'instructions': lists(builds(Instruction))"
+            ".filter(lambda instructions: len(instructions) < 10)})",
+            str(strategy),
+        )
+
+    def test_that_a_multi_line_condition_renders_correctly(self) -> None:
+        # This test case was taken from a solution for Advent of Code, day 8.
+
+        class Operation(enum.Enum):
+            NOP = "nop"
+            ACC = "acc"
+            JMP = "jmp"
+
+        @dataclasses.dataclass
+        class Instruction:
+            operation: Operation
+            argument: int
+
+        @icontract.require(
+            lambda instructions: all(
+                0 <= i + instruction.argument < len(instructions)
+                for i, instruction in enumerate(instructions)
+                if instruction.operation == Operation.JMP
+            )
+        )
+        def execute_instructions(instructions: List[Instruction]) -> Optional[int]:
+            ...
+
+        strategy = icontract_hypothesis.infer_strategy(execute_instructions)
+        self.assertEqual(
+            """\
+fixed_dictionaries({'instructions': lists(builds(Instruction)).filter(lambda instructions: all(
+         0 <= i + instruction.argument < len(instructions)
+         for i, instruction in enumerate(instructions)
+         if instruction.operation == Operation.JMP
+     ))})""",
+            str(strategy),
+        )
+
+    def test_that_a_condition_as_function_renders_correctly(self) -> None:
+        def some_condition(x: int) -> bool:
+            ...
+
+        @icontract.require(some_condition)
+        def some_func(x: int) -> None:
+            ...
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+        self.assertEqual(
+            "fixed_dictionaries({'x': integers().filter(some_condition)})",
+            str(strategy),
+        )
 
 
 if __name__ == "__main__":
