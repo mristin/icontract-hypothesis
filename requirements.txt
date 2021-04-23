@@ -1,2 +1,2 @@
-icontract>=2.4.1,<3
+icontract>=2.5.1,<3
 hypothesis>=5,<7
