@@ -7,12 +7,14 @@
 import abc
 import dataclasses
 import enum
+import inspect
 import math
 import re
 import sys
-import textwrap
 import unittest
-from typing import List, NamedTuple, Union, Optional, Any, Mapping
+from typing import List, NamedTuple, Union, Optional, Any, Mapping, cast, Sequence
+
+import typing
 
 if sys.version_info >= (3, 8):
     from typing import TypedDict

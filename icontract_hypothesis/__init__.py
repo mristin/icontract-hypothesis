@@ -685,7 +685,13 @@ def _strategy_for_type(
             new is not None
         ), "Expected __new__ in {} if __init__ is a slot wrapper.".format(a_type)
 
-        strategy = infer_strategy(new)
+        # Add a local namespace in case there are forward references (which is usually the case for
+        # the return value).
+        #
+        # In particular, the class is not available in the module while we are
+        # registering it through the ``icontract.DBCMeta`` meta-class as its loading is still
+        # in progress.
+        strategy = infer_strategy(new, localns={a_type.__name__: a_type})
     else:
         raise AssertionError(
             "Expected __init__ to be either a function or a slot wrapper, but got: {}".format(
@@ -1165,9 +1171,16 @@ def _create_strategy_only_from_type_hints(
 
 def infer_strategy(
     func: CallableT,
+    localns: Optional[Dict[str, Any]] = None,
+    globalns: Optional[Dict[str, Any]] = None,
 ) -> hypothesis.strategies.SearchStrategy[Any]:
     r"""
     Infer the search strategy of the arguments for the given function.
+
+    You need to supply ``localns`` and ``globalns``, the local namespace and the global namespace
+    of the function, respectively, in case there are forward references which can not be
+    automatically resolved. For example, if you have nested classes and functions.
+    See PEP 563 and the bug reports related to ``typing.get_type_hints`` for more details.
 
     Apart from the internal usage, this function is mainly meant for manual inspection
     of the inferred strategies.
@@ -1200,13 +1213,33 @@ def infer_strategy(
         else:
             pass
 
-    type_hints = typing.get_type_hints(func)
+    type_hints = typing.get_type_hints(func, localns=localns)
     if "return" in type_hints:
         del type_hints["return"]
 
-    typed_args = set(type_hints)
     parameter_set = set(parameters.keys())
     parameter_set.difference_update({"self"})
+
+    # If the class specifies its own ``__new__`` we have to remove the first parameter corresponding
+    # to the class from the list of parameters. Python will supply it by convention.
+    #
+    # However, in case of ``object.__new__``, there is no ``cls`` as the first argument!
+    #
+    # pylint: disable=comparison-with-callable
+    if func.__name__ == "__new__" and func != object.__new__:
+        if len(parameters.keys()) > 0:
+            # Remove the first parameter which points to the class.
+            #
+            # The dunder ``__new__`` is special as we do not want to generate the first argument
+            # corresponding to the class.
+            cls_parameter = next(k for k in parameters.keys())
+
+            parameter_set.remove(cls_parameter)
+
+            if cls_parameter in type_hints:
+                del type_hints[cls_parameter]
+
+    typed_args = set(type_hints)
 
     for name, parameter in parameters.items():
         if parameter.kind in (
@@ -1301,8 +1334,10 @@ def _register_with_hypothesis(cls: Type[T]) -> None:
     in ``hypothesis.strategies.builds``.
     """
     # We should not register abstract classes as this will mislead Hypothesis to instantiate
-    # them.
-    if inspect.isabstract(cls):
+    # them. However, if a class provides a ``__new__``, we can instantiate it even if it is
+    # abstract!
+    # pylint: disable=comparison-with-callable
+    if inspect.isabstract(cls) and getattr(cls, "__new__") == object.__new__:
         return
 
     if cls not in hypothesis.strategies._internal.types._global_type_lookup:
