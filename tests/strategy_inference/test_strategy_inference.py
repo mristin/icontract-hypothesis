@@ -729,5 +729,24 @@ fixed_dictionaries({'instructions': lists(builds(Instruction)).filter(lambda ins
         )
 
 
+class TestSequence(unittest.TestCase):
+    """Test that ``Sequence[T]`` is handled correctly.
+
+    There is possibly a bug in Hypothesis 6.10.1 that causes ``binary()`` strategy on
+    ``Sequence[int]``.
+    """
+
+    def test_sequence_int(self) -> None:
+        def some_func(xs: Sequence[int]) -> None:
+            pass
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+
+        self.assertEqual(
+            "fixed_dictionaries({'xs': lists(integers())})",
+            str(strategy),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
