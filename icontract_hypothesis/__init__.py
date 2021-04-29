@@ -9,7 +9,7 @@ You need to install ``hypothesis`` extras in order to use this module.
 # pylint: disable=too-many-lines
 
 import ast
-import copy
+import collections.abc
 import datetime
 import decimal
 import dis
@@ -41,8 +41,8 @@ from typing import (
 import hypothesis.errors
 import hypothesis.internal.reflection
 import hypothesis.strategies
-import hypothesis.strategies._internal.types
 import hypothesis.strategies._internal.collections
+import hypothesis.strategies._internal.types
 import icontract._checkers
 import icontract._metaclass
 import icontract._recompute
@@ -668,6 +668,46 @@ def _infer_str_strategy_from_preconditions(
     )
 
 
+def _from_type(a_type: Type[T]) -> hypothesis.strategies.SearchStrategy[Any]:
+    """
+    Create a strategy for the given type.
+
+    This function basically fixes a possible bug in Hypothesis 6.10.1 which causes ``Sequence[T]``
+    to be interpreted as ``bytes``.
+    """
+    result = None  # type: Optional[hypothesis.strategies.SearchStrategy[Any]]
+
+    py_version = sys.version_info[:2]
+
+    if py_version == (3, 6):
+        generic_meta = getattr(typing, "GenericMeta", None)
+
+        if generic_meta is not None and isinstance(a_type, generic_meta):
+            args = getattr(a_type, "__args__", None)
+            origin = getattr(a_type, "__origin__", None)
+
+            if origin == typing.Sequence and isinstance(args, tuple) and len(args) == 1:
+                result = hypothesis.strategies.lists(_from_type(args[0]))
+    elif py_version > (3, 6):
+        generic_alias = getattr(typing, "_GenericAlias", None)
+
+        if generic_alias is not None and isinstance(a_type, generic_alias):
+            args = getattr(a_type, "__args__", None)
+            origin = getattr(a_type, "__origin__", None)
+
+            if (
+                origin == collections.abc.Sequence
+                and isinstance(args, tuple)
+                and len(args) == 1
+            ):
+                result = hypothesis.strategies.lists(_from_type(args[0]))
+
+    if result is None:
+        result = hypothesis.strategies.from_type(a_type)
+
+    return result
+
+
 def _strategy_for_type(
     a_type: Type[T],
 ) -> hypothesis.strategies.SearchStrategy[T]:
@@ -719,7 +759,7 @@ def _infer_strategy_for_argument(
 ) -> hypothesis.strategies.SearchStrategy[Any]:
     """Infer the initial strategy for the argument."""
     if contracts is None:
-        return hypothesis.strategies.from_type(type_hint)
+        return _from_type(type_hint)
 
     strategy = None  # type: Optional[hypothesis.strategies.SearchStrategy[Any]]
     remaining_contracts = contracts
@@ -760,7 +800,7 @@ def _infer_strategy_for_argument(
         )
 
     if strategy is None:
-        strategy = hypothesis.strategies.from_type(type_hint)
+        strategy = _from_type(type_hint)
         remaining_contracts = contracts
 
     assert strategy is not None
@@ -1162,10 +1202,7 @@ def _create_strategy_only_from_type_hints(
     For example, this is the strategy that you can infer if there are no preconditions.
     """
     return hypothesis.strategies.fixed_dictionaries(
-        {
-            arg_name: hypothesis.strategies.from_type(arg_type)
-            for arg_name, arg_type in type_hints.items()
-        }
+        {arg_name: _from_type(arg_type) for arg_name, arg_type in type_hints.items()}
     )
 
 
@@ -1213,7 +1250,7 @@ def infer_strategy(
         else:
             pass
 
-    type_hints = typing.get_type_hints(func, localns=localns)
+    type_hints = typing.get_type_hints(func, localns=localns, globalns=globalns)
     if "return" in type_hints:
         del type_hints["return"]
 
