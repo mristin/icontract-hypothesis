@@ -742,8 +742,10 @@ class TestSequence(unittest.TestCase):
 
         strategy = icontract_hypothesis.infer_strategy(some_func)
 
+        # This might seem very surprising, but it is indeed the desired behavior,
+        # see: https://github.com/HypothesisWorks/hypothesis/issues/2950
         self.assertEqual(
-            "fixed_dictionaries({'xs': lists(integers())})",
+            "fixed_dictionaries({'xs': one_of(binary(), lists(integers()))})",
             str(strategy),
         )
 
