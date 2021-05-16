@@ -790,11 +790,24 @@ def _infer_strategy_for_argument(
     return strategy
 
 
-def _rewrite_condition_as_filter(
+# fmt: off
+@icontract.ensure(
+    lambda result:
+    hasattr(result, "__icontract_hypothesis_source_code__"),
+    "The attribute is available (we depend on monkey-patching Hypothesis reflection function)"
+)
+@icontract.ensure(
+    lambda result:
+    result.__name__ == "<lambda>",
+    "Condition-as-filter-function is lambda "
+    "(even in cases where it calls a function as it is rewritten)"
+)
+# fmt: on
+def _rewrite_condition_as_filter_on_kwargs(
     contract: icontract._types.Contract,
 ) -> Callable[..., Any]:
     """
-    Parses, rewrites and recompiles the condition so that it can be used as filter on kwargs.
+    Parse, rewrite and recompile the condition so that it can be used as filter on kwargs.
 
     Return (rewritten condition as filter function, string representation of the condition)
     """
@@ -1135,6 +1148,13 @@ def _infer_strategy_from_conjunction(
         else:
             non_single_argument_contracts.append(contract)
 
+    if self_instance is not None and "self" in type_hints:
+        raise AssertionError(
+            f"Unexpected 'self' in ``type_hints`` {type_hints!r} "
+            f"while ``self_instance`` is given as {self_instance}. "
+            f"We expected 'self' to be removed from type hints in this case."
+        )
+
     mapping = {
         arg_name: _infer_strategy_for_argument(
             arg_name=arg_name,
@@ -1151,19 +1171,26 @@ def _infer_strategy_from_conjunction(
         )
 
     if self_instance is not None:
+        # The contracts on ``self`` will be handled in a special way, see below.
         mapping["self"] = hypothesis.strategies.just(self_instance)
 
     strategy = hypothesis.strategies.fixed_dictionaries(mapping)
 
+    # We need to chain contracts on ``self`` *after* the initial dictionary as Hypothesis
+    # optimizes away ``.filter`` on ``just`` strategy.
+    #
+    # See https://github.com/HypothesisWorks/hypothesis/pull/2688 (code) and
+    # https://github.com/HypothesisWorks/hypothesis/issues/2036 (issue)
+    self_contracts = single_argument_contracts.get("self", [])
+    for contract in self_contracts:
+        strategy = strategy.filter(
+            _rewrite_condition_as_filter_on_kwargs(contract=contract)
+        )
+
     for contract in non_single_argument_contracts:
-        condition_as_filter = _rewrite_condition_as_filter(contract=contract)
-
-        # Assert these attributes here as we depend on monkey patching the Hypothesis
-        # reflection function
-        assert hasattr(condition_as_filter, "__icontract_hypothesis_source_code__")
-        assert condition_as_filter.__name__ == "<lambda>", condition_as_filter.__name__
-
-        strategy = strategy.filter(condition_as_filter)
+        strategy = strategy.filter(
+            _rewrite_condition_as_filter_on_kwargs(contract=contract)
+        )
 
     return strategy
 
@@ -1225,7 +1252,7 @@ def infer_strategy(
     "fixed_dictionaries({'x': integers(min_value=1)})"
     """
     parameters = inspect.signature(func).parameters
-    if len(parameters) == 0:
+    if len(parameters) == 0 and not hasattr(func, "__self__"):
         return hypothesis.strategies.just(dict())
 
     for name, parameter in parameters.items():
@@ -1372,10 +1399,11 @@ def test_with_inferred_strategy(func: CallableT) -> None:
     if hasattr(func, "__self__"):
         func_to_execute = func.__func__  # type: ignore
 
+    strategy = infer_strategy(func=func)
+
     def execute(kwargs: Dict[str, Any]) -> None:
         func_to_execute(**kwargs)
 
-    strategy = infer_strategy(func=func)
     wrapped = hypothesis.given(strategy)(execute)
     wrapped()
 
