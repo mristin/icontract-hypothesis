@@ -1100,9 +1100,16 @@ def _rewrite_condition_as_filter(
 
 
 def _infer_strategy_from_conjunction(
-    type_hints: Mapping[str, Any], conjunction: List[icontract._types.Contract]
+    type_hints: Mapping[str, Any],
+    conjunction: List[icontract._types.Contract],
+    self_instance: Optional[Any],
 ) -> hypothesis.strategies.SearchStrategy[Any]:
-    """Infer the strategy that satisfies the given conjunction of contracts."""
+    """
+    Infer the strategy that satisfies the given conjunction of contracts.
+
+    If ``self_instance`` has been specified, it is included as 'self' in the initial
+    fixed dictionary of strategies.
+    """
     ##
     # Group single-argument contracts by the argument,
     # keep the list of the zero or multi-argument contracts
@@ -1128,16 +1135,25 @@ def _infer_strategy_from_conjunction(
         else:
             non_single_argument_contracts.append(contract)
 
-    strategy = hypothesis.strategies.fixed_dictionaries(
-        {
-            arg_name: _infer_strategy_for_argument(
-                arg_name=arg_name,
-                type_hint=type_hint,
-                contracts=single_argument_contracts.get(arg_name, None),
-            )
-            for arg_name, type_hint in type_hints.items()
-        }
-    )
+    mapping = {
+        arg_name: _infer_strategy_for_argument(
+            arg_name=arg_name,
+            type_hint=type_hint,
+            contracts=single_argument_contracts.get(arg_name, None),
+        )
+        for arg_name, type_hint in type_hints.items()
+    }
+
+    if self_instance is not None and "self" in mapping:
+        raise AssertionError(
+            f"Unexpected 'self' in mapping of initial strategies {mapping!r} "
+            f"while ``self_instance`` is given as {self_instance}."
+        )
+
+    if self_instance is not None:
+        mapping["self"] = hypothesis.strategies.just(self_instance)
+
+    strategy = hypothesis.strategies.fixed_dictionaries(mapping)
 
     for contract in non_single_argument_contracts:
         condition_as_filter = _rewrite_condition_as_filter(contract=contract)
@@ -1153,19 +1169,30 @@ def _infer_strategy_from_conjunction(
 
 
 def _create_strategy_only_from_type_hints(
-    type_hints: Mapping[str, Any]
+    type_hints: Mapping[str, Any], self_instance: Optional[Any]
 ) -> hypothesis.strategies.SearchStrategy[Any]:
     """
     Create a strategy based only on type hints.
 
     For example, this is the strategy that you can infer if there are no preconditions.
+
+    If ``self_instance`` is specified, it is included as a single-example strategy for 'self'.
     """
-    return hypothesis.strategies.fixed_dictionaries(
-        {
-            arg_name: hypothesis.strategies.from_type(arg_type)
-            for arg_name, arg_type in type_hints.items()
-        }
-    )
+    mapping = {
+        arg_name: hypothesis.strategies.from_type(arg_type)
+        for arg_name, arg_type in type_hints.items()
+    }
+
+    if self_instance is not None and "self" in mapping:
+        raise AssertionError(
+            f"Unexpected 'self' in strategy mapping {mapping!r} "
+            f"while self_instance has been specified: {self_instance}"
+        )
+
+    if self_instance is not None:
+        mapping["self"] = hypothesis.strategies.just(self_instance)
+
+    return hypothesis.strategies.fixed_dictionaries(mapping)
 
 
 def infer_strategy(
@@ -1217,7 +1244,21 @@ def infer_strategy(
         del type_hints["return"]
 
     parameter_set = set(parameters.keys())
-    parameter_set.difference_update({"self"})
+
+    # We need to take special care when handling the bound methods whose contracts involve 'self'.
+    if hasattr(func, "__self__") and "self" in parameter_set:
+        parameter_set.remove("self")
+
+        if "self" in type_hints:
+            del type_hints["self"]
+
+    if "self" in parameter_set and func.__name__ == "__init__":
+        # The self instance does not exist yet in the __init__ so we can not generate it and
+        # can safely remove it from the parameters.
+        parameter_set.remove("self")
+
+        if "self" in type_hints:
+            del type_hints["self"]
 
     # If the class specifies its own ``__new__`` we have to remove the first parameter corresponding
     # to the class from the list of parameters. Python will supply it by convention.
@@ -1263,7 +1304,9 @@ def infer_strategy(
     checker = icontract._checkers.find_checker(func)
 
     if checker is None:
-        return _create_strategy_only_from_type_hints(type_hints=type_hints)
+        return _create_strategy_only_from_type_hints(
+            type_hints=type_hints, self_instance=getattr(func, "__self__", None)
+        )
 
     maybe_preconditions = getattr(checker, "__preconditions__", None)
 
@@ -1280,10 +1323,16 @@ def infer_strategy(
         preconditions = cast(List[List[icontract._types.Contract]], maybe_preconditions)
 
     if preconditions is None or len(preconditions) == 0:
-        return _create_strategy_only_from_type_hints(type_hints=type_hints)
+        return _create_strategy_only_from_type_hints(
+            type_hints=type_hints, self_instance=getattr(func, "__self__", None)
+        )
 
     strategies = [
-        _infer_strategy_from_conjunction(type_hints=type_hints, conjunction=conjunction)
+        _infer_strategy_from_conjunction(
+            type_hints=type_hints,
+            conjunction=conjunction,
+            self_instance=getattr(func, "__self__", None),
+        )
         for conjunction in preconditions
     ]
 
@@ -1317,8 +1366,14 @@ def test_with_inferred_strategy(func: CallableT) -> None:
     """
     pass  # for pydocstyle
 
+    # Since ``self`` is already included in the strategy, we have to unbind the ``func``.
+    # Please see ``infer_strategy`` function and how it deals with ``self_instance``.
+    func_to_execute = func
+    if hasattr(func, "__self__"):
+        func_to_execute = func.__func__  # type: ignore
+
     def execute(kwargs: Dict[str, Any]) -> None:
-        func(**kwargs)
+        func_to_execute(**kwargs)
 
     strategy = infer_strategy(func=func)
     wrapped = hypothesis.given(strategy)(execute)
