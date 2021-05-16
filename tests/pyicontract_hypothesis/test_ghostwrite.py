@@ -344,7 +344,6 @@ class TestGhostwrite(unittest.TestCase):
                 )
             )
         )
-        expected_pth.write_text(stdout.getvalue())  # TODO: debug
         expected = expected_pth.read_text()
         self.assertEqual(expected, stdout.getvalue())
 

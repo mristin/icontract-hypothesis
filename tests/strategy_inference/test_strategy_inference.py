@@ -7,20 +7,18 @@
 import abc
 import dataclasses
 import enum
-import inspect
 import math
 import re
 import sys
 import unittest
-from typing import List, NamedTuple, Union, Optional, Any, Mapping, cast, Sequence
-
-import typing
+from typing import List, NamedTuple, Union, Optional, Any, Mapping, Sequence
 
 if sys.version_info >= (3, 8):
     from typing import TypedDict
 
 import hypothesis
 import hypothesis.strategies as st
+import hypothesis.errors
 import icontract
 
 import icontract_hypothesis
@@ -437,7 +435,7 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
 
         icontract_hypothesis.test_with_inferred_strategy(b.some_func)
 
-    def test_precondition_with_self_argument(self) -> None:
+    def test_precondition_with_self_argument_and_another_argument(self) -> None:
         class A(icontract.DBC):
             def __init__(self) -> None:
                 self.min_x = 0
@@ -460,6 +458,65 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
         )
 
         icontract_hypothesis.test_with_inferred_strategy(a.some_func)
+
+    def test_precondition_with_only_self_argument(self) -> None:
+        class A(icontract.DBC):
+            def __init__(self) -> None:
+                self.x = 0
+
+            @icontract.require(lambda self: self.x >= 0)
+            def some_func(self) -> None:
+                pass
+
+            def __repr__(self) -> str:
+                return "An instance of A"
+
+        a = A()
+
+        strategy = icontract_hypothesis.infer_strategy(a.some_func)
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'self': just(An instance of A)})"
+            ".filter(lambda d: d['self'].x >= 0)",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(a.some_func)
+
+    def test_unsatisfiable_precondition_with_self_argument(self) -> None:
+        class A(icontract.DBC):
+            def __init__(self) -> None:
+                # This will make the pre-condition of ``some_func`` unsatisfiable.
+                self.x = -1
+
+            @icontract.require(lambda number: number > 0)
+            @icontract.require(lambda self: self.x >= 0)
+            def some_func(self, number: int) -> None:
+                pass
+
+            def __repr__(self) -> str:
+                return "An instance of A"
+
+        a = A()
+
+        strategy = icontract_hypothesis.infer_strategy(a.some_func)
+
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'number': integers(min_value=1), "
+            "'self': just(An instance of A)})"
+            ".filter(lambda d: d['self'].x >= 0)",
+            str(strategy),
+        )
+
+        error = None  # type: Optional[hypothesis.errors.FailedHealthCheck]
+        try:
+            icontract_hypothesis.test_with_inferred_strategy(a.some_func)
+        except hypothesis.errors.FailedHealthCheck as err:
+            error = err
+
+        assert error is not None
+        self.assertIsInstance(error, hypothesis.errors.FailedHealthCheck)
 
     def test_composition(self) -> None:
         class A(icontract.DBC):
