@@ -415,20 +415,51 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
                 # the preconditions of A.some_func ("require else").
                 pass
 
+            def __repr__(self) -> str:
+                return "An instance of B"
+
         b = B()
 
         strategy = icontract_hypothesis.infer_strategy(b.some_func)
+
         self.assertEqual(
             "one_of("
-            "fixed_dictionaries("
-            "{'x': integers(min_value=1, max_value=19)"
+            "fixed_dictionaries({"
+            "'self': just(An instance of B),\n "
+            "'x': integers(min_value=1, max_value=19)"
             ".filter(lambda x: x % 3 == 0)}), "
-            "fixed_dictionaries({'x': integers(min_value=1, max_value=19)"
+            "fixed_dictionaries({"
+            "'self': just(An instance of B),\n "
+            "'x': integers(min_value=1, max_value=19)"
             ".filter(lambda x: x % 7 == 0)}))",
             str(strategy),
         )
 
         icontract_hypothesis.test_with_inferred_strategy(b.some_func)
+
+    def test_precondition_with_self_argument(self) -> None:
+        class A(icontract.DBC):
+            def __init__(self) -> None:
+                self.min_x = 0
+
+            @icontract.require(lambda self, x: self.min_x < x)
+            def some_func(self, x: int) -> None:
+                pass
+
+            def __repr__(self) -> str:
+                return "An instance of A"
+
+        a = A()
+
+        strategy = icontract_hypothesis.infer_strategy(a.some_func)
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'self': just(An instance of A), 'x': integers()})"
+            ".filter(lambda d: d['self'].min_x < d['x'])",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(a.some_func)
 
     def test_composition(self) -> None:
         class A(icontract.DBC):
