@@ -1177,15 +1177,17 @@ def _infer_strategy_from_conjunction(
     strategy = hypothesis.strategies.fixed_dictionaries(mapping)
 
     # We need to chain contracts on ``self`` *after* the initial dictionary as Hypothesis
-    # optimizes away ``.filter`` on ``just`` strategy.
+    # optimizes away ``.filter`` on ``just`` strategy in representation (though the filtering
+    # is actually performed).
     #
     # See https://github.com/HypothesisWorks/hypothesis/pull/2688 (code) and
-    # https://github.com/HypothesisWorks/hypothesis/issues/2036 (issue)
-    self_contracts = single_argument_contracts.get("self", [])
-    for contract in self_contracts:
-        strategy = strategy.filter(
-            _rewrite_condition_as_filter_on_kwargs(contract=contract)
-        )
+    # https://github.com/HypothesisWorks/hypothesis/issues/2036 (issue) and
+    # https://github.com/HypothesisWorks/hypothesis/issues/2964 (issue).
+    if self_instance is not None and "self" in single_argument_contracts:
+        for contract in single_argument_contracts["self"]:
+            strategy = strategy.filter(
+                _rewrite_condition_as_filter_on_kwargs(contract=contract)
+            )
 
     for contract in non_single_argument_contracts:
         strategy = strategy.filter(
@@ -1306,6 +1308,19 @@ def infer_strategy(
             if cls_parameter in type_hints:
                 del type_hints[cls_parameter]
 
+    if "self" in parameters and "self" not in type_hints and inspect.isfunction(func):
+        # This might be an unbound instance method.
+        # There is no way in Python 3 how we can directly figure out the class of an unbound
+        # method, so we try to hack our way through using ``__qualname__``.
+        #
+        # See https://stackoverflow.com/questions/3589311/get-defining-class-of-unbound-method-object-in-python-3
+        if ".<locals>." not in func.__qualname__:
+            parts = func.__qualname__.rsplit(".", 1)
+            if len(parts) >= 2:
+                maybe_cls = getattr(inspect.getmodule(func), parts[0], None)
+                if inspect.isclass(maybe_cls):
+                    type_hints["self"] = maybe_cls
+
     typed_args = set(type_hints)
 
     for name, parameter in parameters.items():
@@ -1369,9 +1384,18 @@ def infer_strategy(
     return hypothesis.strategies.one_of(strategies)
 
 
-def test_with_inferred_strategy(func: CallableT) -> None:
+def test_with_inferred_strategy(
+    func: CallableT,
+    localns: Optional[Dict[str, Any]] = None,
+    globalns: Optional[Dict[str, Any]] = None,
+) -> None:
     r"""
     Use type hints and contracts to infer the search strategy and test the function.
+
+    You need to supply ``localns`` and ``globalns``, the local namespace and the global namespace
+    of the function, respectively, in case there are forward references which can not be
+    automatically resolved. For example, if you have nested classes and functions.
+    See PEP 563 and the bug reports related to ``typing.get_type_hints`` for more details.
 
     Here is an example test case which tests a function ``some_func``:
 
@@ -1399,7 +1423,7 @@ def test_with_inferred_strategy(func: CallableT) -> None:
     if hasattr(func, "__self__"):
         func_to_execute = func.__func__  # type: ignore
 
-    strategy = infer_strategy(func=func)
+    strategy = infer_strategy(func=func, localns=localns, globalns=globalns)
 
     def execute(kwargs: Dict[str, Any]) -> None:
         func_to_execute(**kwargs)

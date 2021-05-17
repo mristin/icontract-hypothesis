@@ -435,89 +435,6 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
 
         icontract_hypothesis.test_with_inferred_strategy(b.some_func)
 
-    def test_precondition_with_self_argument_and_another_argument(self) -> None:
-        class A(icontract.DBC):
-            def __init__(self) -> None:
-                self.min_x = 0
-
-            @icontract.require(lambda self, x: self.min_x < x)
-            def some_func(self, x: int) -> None:
-                pass
-
-            def __repr__(self) -> str:
-                return "An instance of A"
-
-        a = A()
-
-        strategy = icontract_hypothesis.infer_strategy(a.some_func)
-        self.assertEqual(
-            "fixed_dictionaries({"
-            "'self': just(An instance of A), 'x': integers()})"
-            ".filter(lambda d: d['self'].min_x < d['x'])",
-            str(strategy),
-        )
-
-        icontract_hypothesis.test_with_inferred_strategy(a.some_func)
-
-    def test_precondition_with_only_self_argument(self) -> None:
-        class A(icontract.DBC):
-            def __init__(self) -> None:
-                self.x = 0
-
-            @icontract.require(lambda self: self.x >= 0)
-            def some_func(self) -> None:
-                pass
-
-            def __repr__(self) -> str:
-                return "An instance of A"
-
-        a = A()
-
-        strategy = icontract_hypothesis.infer_strategy(a.some_func)
-        self.assertEqual(
-            "fixed_dictionaries({"
-            "'self': just(An instance of A)})"
-            ".filter(lambda d: d['self'].x >= 0)",
-            str(strategy),
-        )
-
-        icontract_hypothesis.test_with_inferred_strategy(a.some_func)
-
-    def test_unsatisfiable_precondition_with_self_argument(self) -> None:
-        class A(icontract.DBC):
-            def __init__(self) -> None:
-                # This will make the pre-condition of ``some_func`` unsatisfiable.
-                self.x = -1
-
-            @icontract.require(lambda number: number > 0)
-            @icontract.require(lambda self: self.x >= 0)
-            def some_func(self, number: int) -> None:
-                pass
-
-            def __repr__(self) -> str:
-                return "An instance of A"
-
-        a = A()
-
-        strategy = icontract_hypothesis.infer_strategy(a.some_func)
-
-        self.assertEqual(
-            "fixed_dictionaries({"
-            "'number': integers(min_value=1), "
-            "'self': just(An instance of A)})"
-            ".filter(lambda d: d['self'].x >= 0)",
-            str(strategy),
-        )
-
-        error = None  # type: Optional[hypothesis.errors.FailedHealthCheck]
-        try:
-            icontract_hypothesis.test_with_inferred_strategy(a.some_func)
-        except hypothesis.errors.FailedHealthCheck as err:
-            error = err
-
-        assert error is not None
-        self.assertIsInstance(error, hypothesis.errors.FailedHealthCheck)
-
     def test_composition(self) -> None:
         class A(icontract.DBC):
             @icontract.require(lambda x: x > 0)
@@ -836,6 +753,207 @@ class TestSequence(unittest.TestCase):
             "fixed_dictionaries({'xs': one_of(binary(), lists(integers()))})",
             str(strategy),
         )
+
+
+class SomeGlobalClass:
+    # We need this class so that we can try to infer the class of the unbound method based on
+    # ``__qualname__`.
+
+    def __init__(self) -> None:
+        self.x = 1
+
+    @icontract.require(lambda number: number > 0)
+    @icontract.require(lambda self: self.x >= 0)
+    def some_func(self, number: int) -> None:
+        pass
+
+    def __repr__(self) -> str:
+        return f"An instance of {SomeGlobalClass.__name__}"
+
+
+class TestSelf(unittest.TestCase):
+    """Test how ``self`` is generated in different settings."""
+
+    def test_precondition_with_self_argument_and_another_argument(self) -> None:
+        class A(icontract.DBC):
+            def __init__(self) -> None:
+                self.min_x = 0
+
+            @icontract.require(lambda self, x: self.min_x < x)
+            def some_func(self, x: int) -> None:
+                pass
+
+            def __repr__(self) -> str:
+                return "An instance of A"
+
+        a = A()
+
+        strategy = icontract_hypothesis.infer_strategy(a.some_func)
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'self': just(An instance of A), 'x': integers()})"
+            ".filter(lambda d: d['self'].min_x < d['x'])",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(a.some_func)
+
+    def test_precondition_with_only_self_argument(self) -> None:
+        class A(icontract.DBC):
+            def __init__(self) -> None:
+                self.x = 0
+
+            @icontract.require(lambda self: self.x >= 0)
+            def some_func(self) -> None:
+                pass
+
+            def __repr__(self) -> str:
+                return "An instance of A"
+
+        a = A()
+
+        strategy = icontract_hypothesis.infer_strategy(a.some_func)
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'self': just(An instance of A)})"
+            ".filter(lambda d: d['self'].x >= 0)",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(a.some_func)
+
+    def test_unsatisfiable_precondition_with_self_argument(self) -> None:
+        class A(icontract.DBC):
+            def __init__(self) -> None:
+                # This will make the pre-condition of ``some_func`` unsatisfiable.
+                self.x = -1
+
+            @icontract.require(lambda number: number > 0)
+            @icontract.require(lambda self: self.x >= 0)
+            def some_func(self, number: int) -> None:
+                pass
+
+            def __repr__(self) -> str:
+                return "An instance of A"
+
+        a = A()
+
+        strategy = icontract_hypothesis.infer_strategy(a.some_func)
+
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'number': integers(min_value=1), "
+            "'self': just(An instance of A)})"
+            ".filter(lambda d: d['self'].x >= 0)",
+            str(strategy),
+        )
+
+        error = None  # type: Optional[hypothesis.errors.FailedHealthCheck]
+        try:
+            icontract_hypothesis.test_with_inferred_strategy(a.some_func)
+        except hypothesis.errors.FailedHealthCheck as err:
+            error = err
+
+        assert error is not None
+        self.assertIsInstance(error, hypothesis.errors.FailedHealthCheck)
+
+    def test_function_with_self_as_argument(self) -> None:
+        class A:
+            def __init__(self) -> None:
+                self.x = 1
+
+        @icontract.require(lambda self: self.x > 10)
+        def some_func(self: A) -> None:
+            pass
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+
+        self.assertEqual(
+            "fixed_dictionaries({'self': builds(A).filter(lambda self: self.x > 10)})",
+            str(strategy),
+        )
+
+        error = None  # type: Optional[hypothesis.errors.Unsatisfiable]
+        try:
+            icontract_hypothesis.test_with_inferred_strategy(some_func)
+        except hypothesis.errors.Unsatisfiable as err:
+            error = err
+
+        assert error is not None
+        self.assertIsInstance(error, hypothesis.errors.Unsatisfiable)
+
+    def test_precondition_on_self_on_unbound_instance_method_fails_on_nested_classes(
+        self,
+    ) -> None:
+        class A(icontract.DBC):
+            def __init__(self) -> None:
+                self.x = 1
+
+            @icontract.require(lambda number: number > 0)
+            @icontract.require(lambda self: self.x >= 0)
+            def some_func(self, number: int) -> None:
+                pass
+
+            def __repr__(self) -> str:
+                return f"An instance of {A.__name__}"
+
+        # We can not infer the type of ``self`` as ``A`` is a nested class so we can not
+        # "descend" to it from the top of the module based on ``__qualname__`` of ``some_func``.
+        error = None  # type: Optional[TypeError]
+        try:
+            _ = icontract_hypothesis.infer_strategy(A.some_func)
+        except TypeError as err:
+            error = err
+
+        assert error is not None
+        self.assertEqual(
+            "No search strategy could be inferred for the function: <function ...>; "
+            "the following arguments are missing the type annotations: ['self']",
+            re.sub(r"<function .*>", "<function ...>", str(error)),
+        )
+
+    def test_precondition_on_self_on_unbound_instance_method_with_localns(self) -> None:
+        class A(icontract.DBC):
+            def __init__(self) -> None:
+                self.x = 1
+
+            # We need to annotate ``self`` explicitly as we can not figure out the class from
+            # an unbound method.
+            @icontract.require(lambda number: number > 0)
+            @icontract.require(lambda self: self.x >= 0)
+            def some_func(self: "A", number: int) -> None:
+                pass
+
+            def __repr__(self) -> str:
+                return f"An instance of {A.__name__}"
+
+        # We need to supply ``localns`` as ``self`` is annotated with a forward declaration and
+        # ``A`` is a nested class.
+        strategy = icontract_hypothesis.infer_strategy(A.some_func, localns={"A": A})
+
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'number': integers(min_value=1),\n"
+            " 'self': fixed_dictionaries({})"
+            ".map(lambda d: A(**d))"
+            ".filter(lambda self: self.x >= 0)})",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(A.some_func, localns={"A": A})
+
+    def test_infer_self_if_class_is_not_nested(self) -> None:
+        strategy = icontract_hypothesis.infer_strategy(SomeGlobalClass.some_func)
+
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'number': integers(min_value=1),\n"
+            " 'self': builds(SomeGlobalClass)"
+            ".filter(lambda self: self.x >= 0)})",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(SomeGlobalClass.some_func)
 
 
 if __name__ == "__main__":
