@@ -184,7 +184,7 @@ def _recompute(condition: Callable[..., Any], node: ast.expr) -> Tuple[Any, bool
     """Recompute the value corresponding to the node."""
     recompute_visitor = icontract._recompute.Visitor(
         variable_lookup=icontract._represent.collect_variable_lookup(
-            condition=condition, condition_kwargs=None
+            condition=condition, resolved_kwargs=None
         )
     )
 
