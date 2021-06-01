@@ -26,6 +26,7 @@ import icontract_hypothesis
 SOME_GLOBAL_CONST = 0
 
 
+# noinspection PyUnusedLocal,PyPep8Naming
 class TestWithInferredStrategies(unittest.TestCase):
     def test_fail_without_type_hints(self) -> None:
         @icontract.require(lambda x: x > 0)
@@ -42,7 +43,7 @@ class TestWithInferredStrategies(unittest.TestCase):
         self.assertTrue(
             re.match(
                 r"No search strategy could be inferred for the function: <function .*>; "
-                r"the following arguments are missing the type annotations: \['x'\]",
+                r"the following arguments are missing the type annotations: \['x']",
                 str(type_error),
             ),
             str(type_error),
@@ -73,13 +74,13 @@ class TestWithInferredStrategies(unittest.TestCase):
     def test_resorting_to_from_type(self) -> None:
         # We can not handle ``.startswith`` at the moment, so we expect
         # ``from_type`` Hypothesis strategy followed by a filter.
-        @icontract.require(lambda x: x.startswith("oioi"))
+        @icontract.require(lambda x: x.startswith("something"))
         def some_func(x: str) -> None:
             pass
 
         strategy = icontract_hypothesis.infer_strategy(some_func)
         self.assertEqual(
-            "fixed_dictionaries({'x': text().filter(lambda x: x.startswith(\"oioi\"))})",
+            "fixed_dictionaries({'x': text().filter(lambda x: x.startswith(\"something\"))})",
             str(strategy),
         )
 
@@ -252,6 +253,7 @@ fixed_dictionaries({'x': floats(), 'y': floats()}).filter(lambda d: SOME_CONSTAN
         icontract_hypothesis.test_with_inferred_strategy(some_func)
 
 
+# noinspection PyUnusedLocal
 class TestWithInferredStrategiesOnClasses(unittest.TestCase):
     def test_no_preconditions_and_no_argument_init(self) -> None:
         class A:
@@ -283,8 +285,6 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
         icontract_hypothesis.test_with_inferred_strategy(some_func)
 
     def test_map_snippet(self) -> None:
-        import hypothesis.strategies as st
-
         class A(icontract.DBC):
             def __init__(self, x: int, y: int):
                 self.x = x
@@ -476,6 +476,7 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
             def do_something(self) -> None:
                 pass
 
+        # noinspection PyUnusedLocal
         class B(A):
             @icontract.require(lambda x: x > 0)
             def __init__(self, x: int):
@@ -563,6 +564,7 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
                 def __repr__(self) -> str:
                     return "A(x={})".format(self.x)
 
+            # noinspection PyTypedDict
             class B(TypedDict):
                 a: A
 
@@ -660,6 +662,7 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
         icontract_hypothesis.test_with_inferred_strategy(some_func)
 
 
+# noinspection PyUnusedLocal
 class TestRepresentationOfCondition(unittest.TestCase):
     def test_that_a_single_line_condition_renders_correctly(self) -> None:
         # This test case was adapted from a solution for Advent of Code, day 8.
@@ -742,6 +745,7 @@ class TestSequence(unittest.TestCase):
     """
 
     def test_sequence_int(self) -> None:
+        # noinspection PyUnusedLocal
         def some_func(xs: Sequence[int]) -> None:
             pass
 
@@ -779,6 +783,7 @@ class TestSelf(unittest.TestCase):
             def __init__(self) -> None:
                 self.min_x = 0
 
+            # noinspection PyShadowingNames
             @icontract.require(lambda self, x: self.min_x < x)
             def some_func(self, x: int) -> None:
                 pass
@@ -803,6 +808,7 @@ class TestSelf(unittest.TestCase):
             def __init__(self) -> None:
                 self.x = 0
 
+            # noinspection PyShadowingNames
             @icontract.require(lambda self: self.x >= 0)
             def some_func(self) -> None:
                 pass
@@ -828,6 +834,7 @@ class TestSelf(unittest.TestCase):
                 # This will make the pre-condition of ``some_func`` unsatisfiable.
                 self.x = -1
 
+            # noinspection PyShadowingNames
             @icontract.require(lambda number: number > 0)
             @icontract.require(lambda self: self.x >= 0)
             def some_func(self, number: int) -> None:
@@ -862,6 +869,7 @@ class TestSelf(unittest.TestCase):
             def __init__(self) -> None:
                 self.x = 1
 
+        # noinspection PyShadowingNames,PyUnusedLocal
         @icontract.require(lambda self: self.x > 10)
         def some_func(self: A) -> None:
             pass
@@ -889,6 +897,7 @@ class TestSelf(unittest.TestCase):
             def __init__(self) -> None:
                 self.x = 1
 
+            # noinspection PyShadowingNames
             @icontract.require(lambda number: number > 0)
             @icontract.require(lambda self: self.x >= 0)
             def some_func(self, number: int) -> None:
@@ -919,6 +928,7 @@ class TestSelf(unittest.TestCase):
 
             # We need to annotate ``self`` explicitly as we can not figure out the class from
             # an unbound method.
+            # noinspection PyShadowingNames
             @icontract.require(lambda number: number > 0)
             @icontract.require(lambda self: self.x >= 0)
             def some_func(self: "A", number: int) -> None:
