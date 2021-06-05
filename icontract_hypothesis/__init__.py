@@ -1294,8 +1294,10 @@ def infer_strategy(
     #
     # However, in case of ``object.__new__``, there is no ``cls`` as the first argument!
     #
-    # pylint: disable=comparison-with-callable
-    if func.__name__ == "__new__" and func != object.__new__:
+    elif (
+        func.__name__ == "__new__"
+        and func != object.__new__  # pylint: disable=comparison-with-callable
+    ):
         if len(parameters.keys()) > 0:
             # Remove the first parameter which points to the class.
             #
@@ -1308,7 +1310,12 @@ def infer_strategy(
             if cls_parameter in type_hints:
                 del type_hints[cls_parameter]
 
-    if "self" in parameters and "self" not in type_hints and inspect.isfunction(func):
+    elif (
+        not hasattr(func, "__self__")
+        and "self" in parameters
+        and "self" not in type_hints
+        and inspect.isfunction(func)
+    ):
         # This might be an unbound instance method.
         # There is no way in Python 3 how we can directly figure out the class of an unbound
         # method, so we try to hack our way through using ``__qualname__``.
@@ -1339,8 +1346,14 @@ def infer_strategy(
         raise TypeError(
             (
                 "No search strategy could be inferred for the function: {}; "
-                "the following arguments are missing the type annotations: {}"
-            ).format(func, list(parameter_set.difference(typed_args)))
+                "the following arguments are missing the type annotations: {};\n\n"
+                "sorted typed_args was {}, sorted parameter_set was {}"
+            ).format(
+                func,
+                list(parameter_set.difference(typed_args)),
+                sorted(typed_args),
+                sorted(parameter_set),
+            )
         )
 
     checker = icontract._checkers.find_checker(func)
