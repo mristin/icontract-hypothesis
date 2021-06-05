@@ -759,7 +759,7 @@ class TestSequence(unittest.TestCase):
         )
 
 
-class SomeGlobalClass:
+class SomeGlobalClass(icontract.DBC):
     # We need this class so that we can try to infer the class of the unbound method based on
     # ``__qualname__`.
 
@@ -773,6 +773,15 @@ class SomeGlobalClass:
 
     def __repr__(self) -> str:
         return f"An instance of {SomeGlobalClass.__name__}"
+
+
+class SomeGlobalClassWithInheritance(SomeGlobalClass):
+    @icontract.require(lambda another_number: another_number > 0)
+    def another_func(self, another_number: int) -> None:
+        pass
+
+    def __repr__(self) -> str:
+        return f"An instance of {SomeGlobalClassWithInheritance.__name__}"
 
 
 class TestSelf(unittest.TestCase):
@@ -915,10 +924,14 @@ class TestSelf(unittest.TestCase):
             error = err
 
         assert error is not None
+
+        got_error = re.sub(r"<function .*>", "<function ...>", str(error))
+
         self.assertEqual(
             "No search strategy could be inferred for the function: <function ...>; "
-            "the following arguments are missing the type annotations: ['self']",
-            re.sub(r"<function .*>", "<function ...>", str(error)),
+            "the following arguments are missing the type annotations: ['self'];\n\n"
+            "sorted typed_args was ['number'], sorted parameter_set was ['number', 'self']",
+            got_error,
         )
 
     def test_precondition_on_self_on_unbound_instance_method_with_localns(self) -> None:
@@ -958,12 +971,27 @@ class TestSelf(unittest.TestCase):
         self.assertEqual(
             "fixed_dictionaries({"
             "'number': integers(min_value=1),\n"
-            " 'self': builds(SomeGlobalClass)"
+            " 'self': fixed_dictionaries({}).map(lambda d: SomeGlobalClass(**d))"
             ".filter(lambda self: self.x >= 0)})",
             str(strategy),
         )
 
         icontract_hypothesis.test_with_inferred_strategy(SomeGlobalClass.some_func)
+
+    def test_infer_self_if_class_inherits_and_unbound_instance_method(self) -> None:
+        strategy = icontract_hypothesis.infer_strategy(
+            SomeGlobalClassWithInheritance.another_func
+        )
+
+        self.assertEqual(
+            "fixed_dictionaries({'another_number': integers(min_value=1),\n"
+            " 'self': fixed_dictionaries({}).map(lambda d: SomeGlobalClassWithInheritance(**d))})",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(
+            SomeGlobalClassWithInheritance.another_func
+        )
 
 
 if __name__ == "__main__":
