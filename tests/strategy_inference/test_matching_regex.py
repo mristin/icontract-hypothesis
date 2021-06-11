@@ -96,6 +96,27 @@ class TestMatchingRegex(unittest.TestCase):
 
         icontract_hypothesis.test_with_inferred_strategy(some_func)
 
+    def test_fullmatch(self) -> None:
+        SOMETHING_RE = re.compile("something")
+
+        # These assertions highlight the difference between ``match`` and ``fullmatch``.
+        assert SOMETHING_RE.match("something else")
+        assert not SOMETHING_RE.fullmatch("something else")
+        assert SOMETHING_RE.fullmatch("something")
+
+        @icontract.require(lambda s: SOMETHING_RE.fullmatch(s))
+        def some_func(s: str) -> None:
+            pass
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'s': from_regex(re.compile(r'something', re.UNICODE), fullmatch=True)})",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(some_func)
+
 
 if __name__ == "__main__":
     unittest.main()
