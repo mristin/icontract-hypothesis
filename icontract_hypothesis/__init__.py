@@ -24,6 +24,7 @@ from typing import (
     TypeVar,
     Callable,
     Any,
+    Generic,
     List,
     Mapping,
     MutableMapping,
@@ -563,9 +564,18 @@ def _make_strategy_with_min_max_for_type(
 _DUMMY_RE = re.compile(r"something")
 
 
+class PatternInCondition(Generic[AnyStr]):
+    """Represent a pattern that defines the contract condition."""
+
+    def __init__(self, pattern: Pattern[AnyStr], fullmatch: bool) -> None:
+        """Initialize with the given values."""
+        self.pattern: Pattern[AnyStr] = pattern
+        self.fullmatch = fullmatch
+
+
 def _infer_regexp_from_condition(
     arg_name: str, condition: Callable[..., Any]
-) -> Optional[Pattern[AnyStr]]:
+) -> Optional[PatternInCondition[AnyStr]]:
     """Try to infer the regular expression pattern from a precondition."""
     body_node = _body_node_from_condition(condition=condition)
     if body_node is None:
@@ -580,7 +590,12 @@ def _infer_regexp_from_condition(
     if not isinstance(body_node.func, ast.Attribute):
         return None
 
-    if body_node.func.attr != "match":
+    if body_node.func.attr == "match":
+        fullmatch = False
+    elif body_node.func.attr == "fullmatch":
+        fullmatch = True
+    else:
+        # This is neither ``re.match`` nor ``re.fullmatch`` function.
         return None
 
     callee, recomputed = _recompute(condition=condition, node=body_node.func.value)
@@ -620,10 +635,10 @@ def _infer_regexp_from_condition(
                 kwargs[keyword.arg] = value
 
             pattern = re.compile(*args, **kwargs)
-            return pattern
+            return PatternInCondition(pattern=pattern, fullmatch=fullmatch)
 
     elif isinstance(callee, Pattern):
-        return callee
+        return PatternInCondition(pattern=callee, fullmatch=fullmatch)
 
     return None
 
@@ -647,22 +662,24 @@ def _infer_str_strategy_from_preconditions(
     Return (strategy if possible, remaining contracts).
     """
     found_idx = -1  # Index of the contract that defines the pattern, -1 if not found
-    re_pattern = None  # type: Optional[Pattern[AnyStr]]
+    pattern_in_condition = None  # type: Optional[PatternInCondition[AnyStr]]
 
     for i, contract in enumerate(contracts):
-        re_pattern = _infer_regexp_from_condition(
+        pattern_in_condition = _infer_regexp_from_condition(
             arg_name=arg_name, condition=contract.condition
         )
-        if re_pattern is not None:
+        if pattern_in_condition is not None:
             found_idx = i
             break
 
     if found_idx == -1:
         return None, contracts[:]
 
-    assert re_pattern is not None
+    assert pattern_in_condition is not None
     return (
-        hypothesis.strategies.from_regex(regex=re_pattern),
+        hypothesis.strategies.from_regex(
+            regex=pattern_in_condition.pattern, fullmatch=pattern_in_condition.fullmatch
+        ),
         contracts[:found_idx] + contracts[found_idx + 1 :],
     )
 
