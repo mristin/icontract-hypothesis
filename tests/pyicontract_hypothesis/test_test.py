@@ -108,7 +108,10 @@ class TestParsingOfParameters(unittest.TestCase):
 class TestTest(unittest.TestCase):
     def test_default_behavior(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        path = this_dir / "samples" / "sample_module.py"
+        path = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         mod, errors = _general.load_module_from_source_file(path=path)
         self.assertListEqual([], errors)
@@ -139,7 +142,10 @@ class TestTest(unittest.TestCase):
         assert settings_parsing is not None
 
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        path = this_dir / "samples" / "sample_module.py"
+        path = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         mod, errors = _general.load_module_from_source_file(path=path)
         self.assertListEqual([], errors)
@@ -183,7 +189,10 @@ class TestTestViaSmoke(unittest.TestCase):
 
     def test_common_case(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        pth = this_dir / "samples" / "sample_module.py"
+        pth = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         argv = ["test", "--path", str(pth)]
 
@@ -211,7 +220,10 @@ class TestTestViaSmoke(unittest.TestCase):
 
     def test_with_settings(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        pth = this_dir / "samples" / "sample_module.py"
+        pth = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         argv = ["test", "--path", str(pth), "--settings", "max_examples=5"]
 
@@ -226,7 +238,10 @@ class TestTestViaSmoke(unittest.TestCase):
 
     def test_with_include_exclude(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        pth = this_dir / "samples" / "sample_module.py"
+        pth = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         # fmt: off
         argv = [
@@ -252,7 +267,10 @@ class TestInspect(unittest.TestCase):
 
     def test_common_case(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        pth = this_dir / "samples" / "sample_module.py"
+        pth = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         argv = ["test", "--inspect", "--path", str(pth)]
 
@@ -289,7 +307,10 @@ class TestInspect(unittest.TestCase):
 
     def test_with_settings(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        pth = this_dir / "samples" / "sample_module.py"
+        pth = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         # fmt: off
         argv = [

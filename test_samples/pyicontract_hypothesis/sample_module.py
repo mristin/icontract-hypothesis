@@ -1,6 +1,6 @@
 """Provide a valid module for testing pyicontract-hypothesis."""
 
-from tests.pyicontract_hypothesis.samples.sample_library import square_greater_than_zero
+from test_samples.pyicontract_hypothesis.sample_library import square_greater_than_zero
 
 import icontract
 
