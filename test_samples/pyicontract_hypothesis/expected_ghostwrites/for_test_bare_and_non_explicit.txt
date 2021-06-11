@@ -1,11 +1,11 @@
 def test_some_func(self) -> None:
     icontract_hypothesis.test_with_inferred_strategy(
-        tests.pyicontract_hypothesis.samples.sample_module.some_func)
+        test_samples.pyicontract_hypothesis.sample_module.some_func)
 
 def test_another_func(self) -> None:
     icontract_hypothesis.test_with_inferred_strategy(
-        tests.pyicontract_hypothesis.samples.sample_module.another_func)
+        test_samples.pyicontract_hypothesis.sample_module.another_func)
 
 def test_yet_another_func(self) -> None:
     icontract_hypothesis.test_with_inferred_strategy(
-        tests.pyicontract_hypothesis.samples.sample_module.yet_another_func)
+        test_samples.pyicontract_hypothesis.sample_module.yet_another_func)

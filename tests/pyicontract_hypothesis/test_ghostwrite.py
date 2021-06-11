@@ -158,7 +158,10 @@ class TestGhostwrite(unittest.TestCase):
     def test_path(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
 
-        path = this_dir / "samples" / "sample_module.py"
+        path = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
         # fmt: off
         argv = [
             "ghostwrite",
@@ -188,9 +191,8 @@ class TestGhostwrite(unittest.TestCase):
         got = got.replace(qualified_name, "placeholder_for_sample_module")
 
         expected_pth = (
-            this_dir
-            / "samples"
-            / "expected_ghostwrites"
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/expected_ghostwrites"
             / ("for_{}.txt".format(TestGhostwrite.test_path.__name__))
         )
 
@@ -201,7 +203,7 @@ class TestGhostwrite(unittest.TestCase):
         # fmt: off
         argv = [
             "ghostwrite",
-            "--module", "tests.pyicontract_hypothesis.samples.sample_module",
+            "--module", "test_samples.pyicontract_hypothesis.sample_module",
             "--bare",
             "--explicit"
         ]
@@ -217,9 +219,8 @@ class TestGhostwrite(unittest.TestCase):
 
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
         expected_pth = (
-            this_dir
-            / "samples"
-            / "expected_ghostwrites"
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/expected_ghostwrites"
             / ("for_{}.txt".format(TestGhostwrite.test_bare_and_explicit.__name__))
         )
 
@@ -230,7 +231,7 @@ class TestGhostwrite(unittest.TestCase):
         # fmt: off
         argv = [
             "ghostwrite",
-            "--module", "tests.pyicontract_hypothesis.samples.sample_module",
+            "--module", "test_samples.pyicontract_hypothesis.sample_module",
             "--bare",
         ]
         # fmt: on
@@ -245,9 +246,8 @@ class TestGhostwrite(unittest.TestCase):
 
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
         expected_pth = (
-            this_dir
-            / "samples"
-            / "expected_ghostwrites"
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/expected_ghostwrites"
             / ("for_{}.txt".format(TestGhostwrite.test_bare_and_non_explicit.__name__))
         )
 
@@ -258,7 +258,7 @@ class TestGhostwrite(unittest.TestCase):
         # fmt: off
         argv = [
             "ghostwrite",
-            "--module", "tests.pyicontract_hypothesis.samples.sample_module",
+            "--module", "test_samples.pyicontract_hypothesis.sample_module",
             "--explicit"
         ]
         # fmt: on
@@ -273,9 +273,8 @@ class TestGhostwrite(unittest.TestCase):
 
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
         expected_pth = (
-            this_dir
-            / "samples"
-            / "expected_ghostwrites"
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/expected_ghostwrites"
             / ("for_{}.py".format(TestGhostwrite.test_non_bare_and_explicit.__name__))
         )
 
@@ -286,7 +285,7 @@ class TestGhostwrite(unittest.TestCase):
         # fmt: off
         argv = [
             "ghostwrite",
-            "--module", "tests.pyicontract_hypothesis.samples.sample_module",
+            "--module", "test_samples.pyicontract_hypothesis.sample_module",
         ]
         # fmt: on
 
@@ -300,9 +299,8 @@ class TestGhostwrite(unittest.TestCase):
 
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
         expected_pth = (
-            this_dir
-            / "samples"
-            / "expected_ghostwrites"
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/expected_ghostwrites"
             / (
                 "for_{}.py".format(
                     TestGhostwrite.test_non_bare_and_non_explicit.__name__
@@ -320,7 +318,7 @@ class TestGhostwrite(unittest.TestCase):
         argv = [
             "ghostwrite",
             "--module",
-            "tests.pyicontract_hypothesis.samples.well_formatted_with_two_arguments",
+            "test_samples.pyicontract_hypothesis.well_formatted_with_two_arguments",
             "--explicit"
         ]
         # fmt: on
@@ -335,15 +333,15 @@ class TestGhostwrite(unittest.TestCase):
 
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
         expected_pth = (
-            this_dir
-            / "samples"
-            / "expected_ghostwrites"
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/expected_ghostwrites"
             / (
                 "for_{}.py".format(
                     TestGhostwrite.test_well_formatted_with_two_arguments.__name__
                 )
             )
         )
+
         expected = expected_pth.read_text()
         self.assertEqual(expected, stdout.getvalue())
 

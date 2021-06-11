@@ -70,7 +70,10 @@ class TestParsingOfPointSpecs(unittest.TestCase):
 class TestSelectFunctionPoints(unittest.TestCase):
     def test_invalid_module(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        path = this_dir / "samples" / "sample_invalid_module.py"
+        path = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_invalid_module.py"
+        )
 
         mod, errors = _general.load_module_from_source_file(path=path)
         self.assertListEqual([], errors)
@@ -91,7 +94,10 @@ class TestSelectFunctionPoints(unittest.TestCase):
 
     def test_no_include_and_no_exclude(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        path = this_dir / "samples" / "sample_module.py"
+        path = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         mod, errors = _general.load_module_from_source_file(path=path)
         self.assertListEqual([], errors)
@@ -109,7 +115,10 @@ class TestSelectFunctionPoints(unittest.TestCase):
 
     def test_include_line_range(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        path = this_dir / "samples" / "sample_module.py"
+        path = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         mod, errors = _general.load_module_from_source_file(path=path)
         self.assertListEqual([], errors)
@@ -128,7 +137,10 @@ class TestSelectFunctionPoints(unittest.TestCase):
 
     def test_include_pattern(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        path = this_dir / "samples" / "sample_module.py"
+        path = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         mod, errors = _general.load_module_from_source_file(path=path)
         self.assertListEqual([], errors)
@@ -146,7 +158,10 @@ class TestSelectFunctionPoints(unittest.TestCase):
 
     def test_exclude_line_range(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        path = this_dir / "samples" / "sample_module.py"
+        path = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         mod, errors = _general.load_module_from_source_file(path=path)
         self.assertListEqual([], errors)
@@ -168,7 +183,10 @@ class TestSelectFunctionPoints(unittest.TestCase):
 
     def test_exclude_pattern(self) -> None:
         this_dir = pathlib.Path(os.path.realpath(__file__)).parent
-        path = this_dir / "samples" / "sample_module.py"
+        path = (
+            this_dir.parent.parent
+            / "test_samples/pyicontract_hypothesis/sample_module.py"
+        )
 
         mod, errors = _general.load_module_from_source_file(path=path)
         self.assertListEqual([], errors)
