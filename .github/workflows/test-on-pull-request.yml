@@ -23,6 +23,10 @@ jobs:
           pip3 install --upgrade coveralls
           pip3 install -e .[dev]
 
+      - name: Install missing type stubs for mypy
+        if: matrix.python-version == 3.6
+        run: pip3 install types-dataclasses
+
       - name: Run checks
         run: |
           python3 -m doctest icontract_hypothesis/__init__.py
