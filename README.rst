@@ -1,9 +1,9 @@
 icontract-hypothesis
 ====================
 
-.. image:: https://github.com/mristin/icontract-hypothesis/workflows/Test-on-push-to-main/badge.svg
-    :target: https://github.com/mristin/icontract-hypothesis/actions?query=workflow%3ATest-on-push-to-main
-    :alt: Test
+.. image:: https://github.com/mristin/icontract-hypothesis/workflows/CI/badge.svg
+    :target: https://github.com/mristin/icontract-hypothesis/actions?query=workflow%3ACI
+    :alt: Continuous integration
 
 .. image:: https://coveralls.io/repos/github/mristin/icontract-hypothesis/badge.svg?branch=main
     :target: https://coveralls.io/github/mristin/icontract-hypothesis?branch=main

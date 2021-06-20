@@ -1,6 +1,11 @@
-name: Test-on-pull-request
+name: CI
 
-on: [pull_request]
+on:
+  push:
+    branches: [ master, main ]
+    tags: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
 
 jobs:
   Execute:
