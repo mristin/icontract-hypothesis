@@ -77,6 +77,7 @@ precondition:
     ...    some_func(x)
 
     >>> test_some_func()
+    ...
     Traceback (most recent call last):
         ...
     icontract.errors.ViolationError: File <doctest README.rst[4]>, line 2 in <module>:
