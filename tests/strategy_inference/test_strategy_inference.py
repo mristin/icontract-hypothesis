@@ -253,6 +253,24 @@ fixed_dictionaries({'x': floats(), 'y': floats()}).filter(lambda d: SOME_CONSTAN
         icontract_hypothesis.test_with_inferred_strategy(some_func)
 
 
+class SomeCyclicalGlobalClass(icontract.DBC):
+    """
+    Represent a class which has a cyclical dependency on itself.
+
+    For example, a node of a linked list.
+    """
+
+    value: int
+    next_node: Optional["SomeCyclicalGlobalClass"]
+
+    @icontract.require(lambda value: value > 0)
+    def __init__(
+        self, value: int, next_node: Optional["SomeCyclicalGlobalClass"]
+    ) -> None:
+        self.value = value
+        self.next_node = next_node
+
+
 # noinspection PyUnusedLocal
 class TestWithInferredStrategiesOnClasses(unittest.TestCase):
     def test_no_preconditions_and_no_argument_init(self) -> None:
@@ -660,6 +678,24 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
         )
 
         icontract_hypothesis.test_with_inferred_strategy(some_func)
+
+    def test_cyclical_data_structure(self) -> None:
+        def some_func(cyclical: SomeCyclicalGlobalClass) -> None:
+            pass
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'cyclical': fixed_dictionaries({"
+            "'next_node': one_of(none(), builds(SomeCyclicalGlobalClass)),\n"
+            "  'value': integers(min_value=1)}).map(lambda d: SomeCyclicalGlobalClass(**d))})",
+            str(strategy),
+        )
+
+        # We can not execute this strategy, as ``builds`` is not handling the recursivity well.
+        # Please see this Hypothesis issue:
+        # https://github.com/HypothesisWorks/hypothesis/issues/3026
 
 
 # noinspection PyUnusedLocal
