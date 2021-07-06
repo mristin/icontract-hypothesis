@@ -1484,7 +1484,15 @@ def _register_with_hypothesis(cls: Type[T]) -> None:
         return
 
     if cls not in hypothesis.strategies._internal.types._global_type_lookup:
+        # Register first with builds strategy so that circular dependencies are avoided
+        # if, say, a constructor uses arguments of the same class.
+        hypothesis.strategies.register_type_strategy(
+            custom_type=cls, strategy=hypothesis.strategies.builds(cls)
+        )
+
         strategy = _strategy_for_type(cls)
+
+        # Now re-register as we have fixed it to a concrete case.
         hypothesis.strategies.register_type_strategy(custom_type=cls, strategy=strategy)
 
 
