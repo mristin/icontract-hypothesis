@@ -1278,8 +1278,11 @@ def infer_strategy(
     parameter_set = set(parameters.keys())
 
     # We need to take special care when handling the bound methods whose contracts involve 'self'.
-    if hasattr(func, "__self__") and "self" in parameter_set:
-        parameter_set.remove("self")
+    if hasattr(func, "__self__"):
+        assert "self" not in parameter_set, (
+            f"Unexpected ``self`` in the parameter set when ``__self__`` was set "
+            f"on the function {func}; the parameter set was: {parameter_set}"
+        )
 
         if "self" in type_hints:
             del type_hints["self"]

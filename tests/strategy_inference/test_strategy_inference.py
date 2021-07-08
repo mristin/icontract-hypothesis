@@ -11,7 +11,7 @@ import math
 import re
 import sys
 import unittest
-from typing import List, NamedTuple, Union, Optional, Any, Mapping, Sequence, cast
+from typing import List, NamedTuple, Union, Optional, Any, Mapping, Sequence, cast, Type
 
 if sys.version_info >= (3, 8):
     from typing import TypedDict
@@ -698,27 +698,6 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
         # Please see this Hypothesis issue:
         # https://github.com/HypothesisWorks/hypothesis/issues/3026
 
-    def test_new_with_cast(self) -> None:
-        class PositiveInteger(icontract.DBC, int):
-            @icontract.require(lambda integer: integer > 0)
-            def __new__(cls, integer: int) -> "PositiveInteger":
-                return cast(PositiveInteger, integer)
-
-        def some_func(positive_integer: PositiveInteger) -> None:
-            pass
-
-        strategy = icontract_hypothesis.infer_strategy(some_func)
-        self.assertEqual(
-            "fixed_dictionaries({"
-            "'positive_integer': "
-            "fixed_dictionaries({"
-            "'integer': integers(min_value=1)})"
-            ".map(lambda d: PositiveInteger(**d))})",
-            str(strategy),
-        )
-
-        icontract_hypothesis.test_with_inferred_strategy(some_func)
-
     def test_class_not_registered_if_no_contracts_on_init(self) -> None:
         class A(icontract.DBC):
             def __init__(self, x: int) -> None:
@@ -936,6 +915,35 @@ class TestSelf(unittest.TestCase):
 
         icontract_hypothesis.test_with_inferred_strategy(a.some_func)
 
+    def test_precondition_with_typed_self_argument(self) -> None:
+        class A(icontract.DBC):
+            def __init__(self) -> None:
+                self.x = 0
+
+            # noinspection PyShadowingNames
+            @icontract.require(lambda self: self.x >= 0)
+            def some_func(self: "A") -> None:
+                pass
+
+            def __repr__(self) -> str:
+                return "An instance of A"
+
+        a = A()
+
+        strategy = icontract_hypothesis.infer_strategy(
+            a.some_func, localns={A.__name__: A}
+        )
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'self': just(An instance of A)})"
+            ".filter(lambda d: d['self'].x >= 0)",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(
+            a.some_func, localns={A.__name__: A}
+        )
+
     def test_unsatisfiable_precondition_with_self_argument(self) -> None:
         class A(icontract.DBC):
             def __init__(self) -> None:
@@ -1088,6 +1096,50 @@ class TestSelf(unittest.TestCase):
 
         icontract_hypothesis.test_with_inferred_strategy(
             SomeGlobalClassWithInheritance.another_func
+        )
+
+
+class TestNew(unittest.TestCase):
+    def test_new_with_cast(self) -> None:
+        class PositiveInteger(icontract.DBC, int):
+            @icontract.require(lambda integer: integer > 0)
+            def __new__(cls, integer: int) -> "PositiveInteger":
+                return cast(PositiveInteger, integer)
+
+        def some_func(positive_integer: PositiveInteger) -> None:
+            pass
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'positive_integer': "
+            "fixed_dictionaries({"
+            "'integer': integers(min_value=1)})"
+            ".map(lambda d: PositiveInteger(**d))})",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(some_func)
+
+    def test_new_with_cls_typed(self) -> None:
+        class PositiveInteger(icontract.DBC, int):
+            @icontract.require(lambda integer: integer > 0)
+            def __new__(
+                cls: Type["PositiveInteger"], integer: int
+            ) -> "PositiveInteger":
+                return cast(PositiveInteger, integer)
+
+        def some_func(positive_integer: PositiveInteger) -> None:
+            pass
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'positive_integer': "
+            "fixed_dictionaries({"
+            "'integer': integers(min_value=1)})"
+            ".map(lambda d: PositiveInteger(**d))})",
+            str(strategy),
         )
 
 
