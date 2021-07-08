@@ -62,7 +62,7 @@ T = TypeVar("T")  # pylint: disable=invalid-name
 
 
 def _assume_preconditions_always_satisfied(
-    *args: Tuple[Any, ...], **kwargs: Dict[str, Any]
+        *args: Tuple[Any, ...], **kwargs: Dict[str, Any]
 ) -> None:
     """Assume that the preconditions are always satisfied (say, when there are no preconditions)."""
 
@@ -144,11 +144,11 @@ class _InferredMinMax:
     """Represent the inference result of boundaries on an argument."""
 
     def __init__(
-        self,
-        min_value: Optional[Any] = None,
-        min_inclusive: bool = False,
-        max_value: Optional[Any] = None,
-        max_inclusive: bool = False,
+            self,
+            min_value: Optional[Any] = None,
+            min_inclusive: bool = False,
+            max_value: Optional[Any] = None,
+            max_inclusive: bool = False,
     ) -> None:
         """Initialize with the given values."""
         self.min_value = min_value
@@ -165,7 +165,7 @@ def _no_name_in_descendants(root: ast.expr, name: str) -> bool:
         """Search for the name node."""
 
         def visit_Name(  # pylint: disable=invalid-name,no-self-use,missing-docstring
-            self, node: ast.Name
+                self, node: ast.Name
         ) -> None:
             if node.id == name:
                 nonlocal found
@@ -198,7 +198,7 @@ def _recompute(condition: Callable[..., Any], node: ast.expr) -> Tuple[Any, bool
 
 
 def _infer_min_max_from_node(
-    condition: Callable[..., bool], node: ast.Compare, arg_name: str
+        condition: Callable[..., bool], node: ast.Compare, arg_name: str
 ) -> Optional[_InferredMinMax]:
     """Match one of the patterns against the AST compare node."""
     # pylint: disable=too-many-boolean-expressions
@@ -210,9 +210,9 @@ def _infer_min_max_from_node(
 
         # Match something like "x > 0" and "x < 100"
         if (
-            isinstance(node.left, ast.Name)
-            and node.left.id == arg_name
-            and _no_name_in_descendants(root=comparator, name=arg_name)
+                isinstance(node.left, ast.Name)
+                and node.left.id == arg_name
+                and _no_name_in_descendants(root=comparator, name=arg_name)
         ):
             value, recomputed = _recompute(condition=condition, node=comparator)
 
@@ -240,9 +240,9 @@ def _infer_min_max_from_node(
 
         # Match something like "0 < x" and "100 > x"
         if (
-            _no_name_in_descendants(root=node.left, name=arg_name)
-            and isinstance(comparator, ast.Name)
-            and comparator.id == arg_name
+                _no_name_in_descendants(root=node.left, name=arg_name)
+                and isinstance(comparator, ast.Name)
+                and comparator.id == arg_name
         ):
             value, recomputed = _recompute(condition=condition, node=node.left)
 
@@ -273,10 +273,10 @@ def _infer_min_max_from_node(
     elif len(node.comparators) == 2:
         # Match something like "0 < x < 100" and "0 > x > -100"
         if (
-            _no_name_in_descendants(root=node.left, name=arg_name)
-            and isinstance(node.comparators[0], ast.Name)
-            and node.comparators[0].id == arg_name
-            and _no_name_in_descendants(root=node.comparators[1], name=arg_name)
+                _no_name_in_descendants(root=node.left, name=arg_name)
+                and isinstance(node.comparators[0], ast.Name)
+                and node.comparators[0].id == arg_name
+                and _no_name_in_descendants(root=node.comparators[1], name=arg_name)
         ):
 
             left_value, recomputed = _recompute(condition=condition, node=node.left)
@@ -297,7 +297,7 @@ def _infer_min_max_from_node(
 
             # Match something like "0 < x < 100"
             if isinstance(op0, (ast.Lt, ast.LtE)) and isinstance(
-                op1, (ast.Lt, ast.LtE)
+                    op1, (ast.Lt, ast.LtE)
             ):
                 return _InferredMinMax(
                     min_value=left_value,
@@ -308,7 +308,7 @@ def _infer_min_max_from_node(
 
             # Match something like "0 > x > -100"
             elif isinstance(op0, (ast.Gt, ast.GtE)) and isinstance(
-                op1, (ast.Gt, ast.GtE)
+                    op1, (ast.Gt, ast.GtE)
             ):
                 return _InferredMinMax(
                     min_value=right_value,
@@ -341,7 +341,7 @@ def _body_node_from_condition(condition: Callable[..., Any]) -> Optional[ast.exp
     )
 
     assert (
-        lambda_inspection is not None
+            lambda_inspection is not None
     ), "Expected lambda_inspection to be non-None if _is_lambda is True on: {}".format(
         condition
     )
@@ -359,7 +359,7 @@ def _body_node_from_condition(condition: Callable[..., Any]) -> Optional[ast.exp
     "All contracts are single-argument contracts related to this argument.",
 )
 def _infer_min_max_from_preconditions(
-    arg_name: str, type_hint: Type[T], contracts: List[icontract._types.Contract]
+        arg_name: str, type_hint: Type[T], contracts: List[icontract._types.Contract]
 ) -> Tuple[_InferredMinMax, List[icontract._types.Contract]]:
     """
     Infer the min and max values for the given argument from all related preconditions.
@@ -418,7 +418,7 @@ def _infer_min_max_from_preconditions(
 
 
 def _make_strategy_with_min_max_for_type(
-    a_type: Type[T], inferred: _InferredMinMax
+        a_type: Type[T], inferred: _InferredMinMax
 ) -> hypothesis.strategies.SearchStrategy[T]:
     if a_type == int:
         # hypothesis.strategies.integers is always inclusive so we have to cut off the boundaries
@@ -508,10 +508,10 @@ def _make_strategy_with_min_max_for_type(
                     )
 
                 min_value = (
-                    datetime.datetime.combine(
-                        datetime.date(2000, 1, 1), min_value, min_value.tzinfo
-                    )
-                    + datetime.timedelta(microseconds=1)
+                        datetime.datetime.combine(
+                            datetime.date(2000, 1, 1), min_value, min_value.tzinfo
+                        )
+                        + datetime.timedelta(microseconds=1)
                 ).time()
 
         max_value = datetime.time.max
@@ -527,10 +527,10 @@ def _make_strategy_with_min_max_for_type(
                     )
 
                 max_value = (
-                    datetime.datetime.combine(
-                        datetime.date(2000, 1, 1), max_value, max_value.tzinfo
-                    )
-                    - datetime.timedelta(microseconds=1)
+                        datetime.datetime.combine(
+                            datetime.date(2000, 1, 1), max_value, max_value.tzinfo
+                        )
+                        - datetime.timedelta(microseconds=1)
                 ).time()
 
         strategy = hypothesis.strategies.times(min_value=min_value, max_value=max_value)
@@ -574,7 +574,7 @@ class PatternInCondition(Generic[AnyStr]):
 
 
 def _infer_regexp_from_condition(
-    arg_name: str, condition: Callable[..., Any]
+        arg_name: str, condition: Callable[..., Any]
 ) -> Optional[PatternInCondition[AnyStr]]:
     """Try to infer the regular expression pattern from a precondition."""
     body_node = _body_node_from_condition(condition=condition)
@@ -605,14 +605,14 @@ def _infer_regexp_from_condition(
     if callee == re:
         # Match "re.match(r'Some pattern', s, *args, *kwargs)
         if (
-            len(body_node.args) >= 2
-            and _no_name_in_descendants(root=body_node.args[0], name=arg_name)
-            and isinstance(body_node.args[1], ast.Name)
-            and body_node.args[1].id == arg_name
-            and not any(
-                _no_name_in_descendants(root=arg, name=arg_name)
-                for arg in body_node.args[2:]
-            )
+                len(body_node.args) >= 2
+                and _no_name_in_descendants(root=body_node.args[0], name=arg_name)
+                and isinstance(body_node.args[1], ast.Name)
+                and body_node.args[1].id == arg_name
+                and not any(
+            _no_name_in_descendants(root=arg, name=arg_name)
+            for arg in body_node.args[2:]
+        )
         ):
             # Recompute the pattern
             args = []  # type: List[Any]
@@ -630,7 +630,7 @@ def _infer_regexp_from_condition(
                     return None
 
                 assert (
-                    keyword.arg is not None
+                        keyword.arg is not None
                 ), "Unexpected missing arg for a keyword: {}".format(ast.dump(keyword))
                 kwargs[keyword.arg] = value
 
@@ -651,7 +651,7 @@ def _infer_regexp_from_condition(
     "All contracts are single-argument contracts related to this argument.",
 )
 def _infer_str_strategy_from_preconditions(
-    arg_name: str, contracts: List[icontract._types.Contract]
+        arg_name: str, contracts: List[icontract._types.Contract]
 ) -> Tuple[
     Optional[hypothesis.strategies.SearchStrategy[AnyStr]],
     List[icontract._types.Contract],
@@ -680,12 +680,12 @@ def _infer_str_strategy_from_preconditions(
         hypothesis.strategies.from_regex(
             regex=pattern_in_condition.pattern, fullmatch=pattern_in_condition.fullmatch
         ),
-        contracts[:found_idx] + contracts[found_idx + 1 :],
+        contracts[:found_idx] + contracts[found_idx + 1:],
     )
 
 
 def _strategy_for_type(
-    a_type: Type[T],
+        a_type: Type[T],
 ) -> hypothesis.strategies.SearchStrategy[T]:
     """Create a strategy for instances to satisfy the preconditions on ``__init__``."""
     init = getattr(a_type, "__init__")
@@ -704,7 +704,7 @@ def _strategy_for_type(
         # In those cases, we have to infer the strategy based on __new__ instead of __init__.
         new = getattr(a_type, "__new__")
         assert (
-            new is not None
+                new is not None
         ), "Expected __new__ in {} if __init__ is a slot wrapper.".format(a_type)
 
         # We have to add the ``a_type`` itself to a local namespace for forward references.
@@ -732,13 +732,13 @@ def _strategy_for_type(
 
 @icontract.require(
     lambda arg_name, contracts: contracts is None
-    or all(
+                                or all(
         len(contract.condition_args) == 1 and contract.condition_args[0] == arg_name
         for contract in contracts
     )
 )
 def _infer_strategy_for_argument(
-    arg_name: str, type_hint: Any, contracts: Optional[List[icontract._types.Contract]]
+        arg_name: str, type_hint: Any, contracts: Optional[List[icontract._types.Contract]]
 ) -> hypothesis.strategies.SearchStrategy[Any]:
     """Infer the initial strategy for the argument."""
     if contracts is None:
@@ -762,9 +762,9 @@ def _infer_strategy_for_argument(
         )
 
         if (
-            inferred.min_value is not None
-            and inferred.max_value is not None
-            and inferred.min_value > inferred.max_value
+                inferred.min_value is not None
+                and inferred.max_value is not None
+                and inferred.min_value > inferred.max_value
         ):
             raise ValueError(
                 (
@@ -828,7 +828,7 @@ def _infer_strategy_for_argument(
 )
 # fmt: on
 def _rewrite_condition_as_filter_on_kwargs(
-    contract: icontract._types.Contract,
+        contract: icontract._types.Contract,
 ) -> Callable[..., Any]:
     """
     Parse, rewrite and recompile the condition so that it can be used as filter on kwargs.
@@ -882,7 +882,7 @@ def _rewrite_condition_as_filter_on_kwargs(
         """Find all the Name nodes."""
 
         def visit_Name(  # pylint: disable=invalid-name,no-self-use,missing-docstring
-            self, node: ast.Name
+                self, node: ast.Name
         ) -> None:
             name_set.add(node.id)
 
@@ -914,7 +914,7 @@ def _rewrite_condition_as_filter_on_kwargs(
         """Replace condition arguments with kwargs subscript."""
 
         def visit_Name(  # pylint: disable=invalid-name,no-self-use,missing-docstring
-            self, node: ast.Name
+                self, node: ast.Name
         ) -> ast.expr:
             nonlocal replacements_in_text
 
@@ -990,15 +990,15 @@ def _rewrite_condition_as_filter_on_kwargs(
         previous_replace = None  # type: Optional[Replace]
         for replace in replacements_in_text:
             if previous_replace is None:
-                parts.append(text[body_start : replace.start])
+                parts.append(text[body_start: replace.start])
             else:
-                parts.append(text[previous_replace.end : replace.start])
+                parts.append(text[previous_replace.end: replace.start])
 
             parts.append(replace.replacement)
             previous_replace = replace
 
         assert previous_replace is not None
-        parts.append(text[previous_replace.end : body_end])
+        parts.append(text[previous_replace.end: body_end])
         condition_repr = "lambda {}: {}".format(kwargs_name, "".join(parts))
 
     ##
@@ -1045,8 +1045,8 @@ def _rewrite_condition_as_filter_on_kwargs(
 
     # The last instruction must be RETURN_VALUE.
     assert (
-        bytecode[-2:]
-        == dis.opmap["RETURN_VALUE"].to_bytes(1, byteorder="little") + b"\x00"
+            bytecode[-2:]
+            == dis.opmap["RETURN_VALUE"].to_bytes(1, byteorder="little") + b"\x00"
     )
 
     # Since we know that the last instruction is RETURN_VALUE,
@@ -1083,7 +1083,7 @@ def _rewrite_condition_as_filter_on_kwargs(
                     f"and the original globals were {global_vars!r}, respectively."
                 )
         else:
-            new_bytecode.write(bytecode[i : i + 2])
+            new_bytecode.write(bytecode[i: i + 2])
 
     new_bytecode.write(bytecode[-2:])
 
@@ -1137,9 +1137,9 @@ def _rewrite_condition_as_filter_on_kwargs(
 
 
 def _infer_strategy_from_conjunction(
-    type_hints: Mapping[str, Any],
-    conjunction: List[icontract._types.Contract],
-    self_instance: Optional[Any],
+        type_hints: Mapping[str, Any],
+        conjunction: List[icontract._types.Contract],
+        self_instance: Optional[Any],
 ) -> hypothesis.strategies.SearchStrategy[Any]:
     """
     Infer the strategy that satisfies the given conjunction of contracts.
@@ -1160,8 +1160,8 @@ def _infer_strategy_from_conjunction(
 
     for contract in conjunction:
         if len(contract.condition_args) == 1 and contract.condition_args[0] not in (
-            "_ARGS",
-            "_KWARGS",
+                "_ARGS",
+                "_KWARGS",
         ):
             arg_name = contract.condition_args[0]
 
@@ -1222,7 +1222,7 @@ def _infer_strategy_from_conjunction(
 
 
 def _create_strategy_only_from_type_hints(
-    type_hints: Mapping[str, Any], self_instance: Optional[Any]
+        type_hints: Mapping[str, Any], self_instance: Optional[Any]
 ) -> hypothesis.strategies.SearchStrategy[Any]:
     """
     Create a strategy based only on type hints.
@@ -1249,9 +1249,9 @@ def _create_strategy_only_from_type_hints(
 
 
 def infer_strategy(
-    func: CallableT,
-    localns: Optional[Dict[str, Any]] = None,
-    globalns: Optional[Dict[str, Any]] = None,
+        func: CallableT,
+        localns: Optional[Dict[str, Any]] = None,
+        globalns: Optional[Dict[str, Any]] = None,
 ) -> hypothesis.strategies.SearchStrategy[Any]:
     r"""
     Infer the search strategy of the arguments for the given function.
@@ -1319,8 +1319,8 @@ def infer_strategy(
     # However, in case of ``object.__new__``, there is no ``cls`` as the first argument!
     #
     elif (
-        func.__name__ == "__new__"
-        and func != object.__new__  # pylint: disable=comparison-with-callable
+            func.__name__ == "__new__"
+            and func != object.__new__  # pylint: disable=comparison-with-callable
     ):
         if len(parameters.keys()) > 0:
             # Remove the first parameter which points to the class.
@@ -1335,10 +1335,10 @@ def infer_strategy(
                 del type_hints[cls_parameter]
 
     elif (
-        not hasattr(func, "__self__")
-        and "self" in parameters
-        and "self" not in type_hints
-        and inspect.isfunction(func)
+            not hasattr(func, "__self__")
+            and "self" in parameters
+            and "self" not in type_hints
+            and inspect.isfunction(func)
     ):
         # This might be an unbound instance method.
         # There is no way in Python 3 how we can directly figure out the class of an unbound
@@ -1356,8 +1356,8 @@ def infer_strategy(
 
     for name, parameter in parameters.items():
         if parameter.kind in (
-            inspect.Parameter.VAR_KEYWORD,
-            inspect.Parameter.VAR_POSITIONAL,
+                inspect.Parameter.VAR_KEYWORD,
+                inspect.Parameter.VAR_POSITIONAL,
         ):
             # Ignore variable keyword and positional arguments in further analysis
             parameter_set.remove(name)
@@ -1422,9 +1422,9 @@ def infer_strategy(
 
 
 def test_with_inferred_strategy(
-    func: CallableT,
-    localns: Optional[Dict[str, Any]] = None,
-    globalns: Optional[Dict[str, Any]] = None,
+        func: CallableT,
+        localns: Optional[Dict[str, Any]] = None,
+        globalns: Optional[Dict[str, Any]] = None,
 ) -> None:
     r"""
     Use type hints and contracts to infer the search strategy and test the function.
@@ -1484,16 +1484,9 @@ def _register_with_hypothesis(cls: Type[T]) -> None:
         return
 
     if cls not in hypothesis.strategies._internal.types._global_type_lookup:
-        # Register first with builds strategy so that circular dependencies are avoided
-        # if, say, a constructor uses arguments of the same class.
-        hypothesis.strategies.register_type_strategy(
-            custom_type=cls, strategy=hypothesis.strategies.builds(cls)
-        )
-
-        strategy = _strategy_for_type(cls)
-
-        # Now re-register as we have fixed it to a concrete case.
-        hypothesis.strategies.register_type_strategy(custom_type=cls, strategy=strategy)
+        strategy = hypothesis.strategies.deferred(lambda: _strategy_for_type(cls))
+        hypothesis.strategies.register_type_strategy(cls, strategy)
+        print(f"strategy is {strategy!r}")  # TODO: debug
 
 
 def _hook_into_icontract_and_hypothesis() -> None:
@@ -1521,8 +1514,8 @@ def _hook_into_icontract_and_hypothesis() -> None:
         hypothesis.internal.reflection.extract_lambda_source
     )
     hypothesis.internal.reflection.extract_lambda_source = lambda f: (
-        getattr(f, "__icontract_hypothesis_source_code__", None)
-        or upstream_extract_lambda_source(f)  # type: ignore
+            getattr(f, "__icontract_hypothesis_source_code__", None)
+            or upstream_extract_lambda_source(f)  # type: ignore
     )
 
 
