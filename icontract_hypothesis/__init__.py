@@ -103,7 +103,7 @@ def make_assume_preconditions(func: CallableT) -> Callable[..., None]:
         return _assume_preconditions_always_satisfied
 
     preconditions = getattr(checker, "__preconditions__", None)
-    if preconditions is None:
+    if preconditions is None or len(preconditions) == 0:
         return _assume_preconditions_always_satisfied
 
     sign = inspect.signature(func)
