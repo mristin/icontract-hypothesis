@@ -684,52 +684,6 @@ def _infer_str_strategy_from_preconditions(
     )
 
 
-def _strategy_for_type(
-    a_type: Type[T],
-) -> hypothesis.strategies.SearchStrategy[T]:
-    """Create a strategy for instances to satisfy the preconditions on ``__init__``."""
-    init = getattr(a_type, "__init__")
-
-    if inspect.isfunction(init):
-        # We have to add the ``a_type`` itself to a local namespace for forward references.
-        #
-        # This is needed if we register a class through the ``icontract.DBCMeta``
-        # meta-class where it references itself. For example, a node in a linked list.
-
-        strategy = infer_strategy(init, localns={a_type.__name__: a_type})
-
-    elif isinstance(init, icontract._checkers._SLOT_WRAPPER_TYPE):
-        # We have to distinguish this special case which is used by named tuples and
-        # possibly other optimized data structures.
-        # In those cases, we have to infer the strategy based on __new__ instead of __init__.
-        new = getattr(a_type, "__new__")
-        assert (
-            new is not None
-        ), "Expected __new__ in {} if __init__ is a slot wrapper.".format(a_type)
-
-        # We have to add the ``a_type`` itself to a local namespace for forward references.
-        # This is usually the case for the return value of ``__new__``.
-        #
-        # In particular, the class is not available in the module while we are
-        # registering it through the ``icontract.DBCMeta`` meta-class as its loading is still
-        # in progress.
-
-        strategy = infer_strategy(new, localns={a_type.__name__: a_type})
-    else:
-        raise AssertionError(
-            "Expected __init__ to be either a function or a slot wrapper, but got: {}".format(
-                type(init)
-            )
-        )
-
-    pack_repr = f"lambda d: {a_type.__name__}(**d)"
-
-    pack = lambda d: a_type(**d)  # type: ignore
-    pack.__icontract_hypothesis_source_code__ = pack_repr  # type: ignore
-
-    return strategy.map(pack=pack)
-
-
 @icontract.require(
     lambda arg_name, contracts: contracts is None
     or all(
@@ -1471,7 +1425,7 @@ def test_with_inferred_strategy(
 
 def _register_with_hypothesis(cls: Type[T]) -> None:
     """
-    Register ``cls`` with Hypothesis based on our custom ``_strategy_for_type``.
+    Register ``cls`` with Hypothesis based on the inferred strategy.
 
     The registration is necessary so that the preconditions on the __init__ are propagated
     in ``hypothesis.strategies.builds``.
@@ -1483,9 +1437,62 @@ def _register_with_hypothesis(cls: Type[T]) -> None:
     if inspect.isabstract(cls) and getattr(cls, "__new__") == object.__new__:
         return
 
-    if cls not in hypothesis.strategies._internal.types._global_type_lookup:
-        strategy = _strategy_for_type(cls)
-        hypothesis.strategies.register_type_strategy(custom_type=cls, strategy=strategy)
+    if cls in hypothesis.strategies._internal.types._global_type_lookup:
+        # Do not re-register
+        return
+
+    init = getattr(cls, "__init__")
+
+    if inspect.isfunction(init):
+        # If there is is no checker nor pre-conditions on ``__init__``, we should simply delegate
+        # the case to Hypothesis and not register the strategy for this type.
+
+        checker = icontract._checkers.find_checker(init)
+        if checker is None:
+            return
+
+        maybe_preconditions = getattr(checker, "__preconditions__", None)
+        if maybe_preconditions is None or len(maybe_preconditions) == 0:
+            return
+
+        # We have to add the ``a_type`` itself to a local namespace for forward references.
+        #
+        # This is needed if we register a class through the ``icontract.DBCMeta``
+        # meta-class where it references itself. For example, a node in a linked list.
+
+        strategy = infer_strategy(init, localns={cls.__name__: cls})
+
+    elif isinstance(init, icontract._checkers._SLOT_WRAPPER_TYPE):
+        # We have to distinguish this special case which is used by named tuples and
+        # possibly other optimized data structures.
+        # In those cases, we have to infer the strategy based on __new__ instead of __init__.
+        new = getattr(cls, "__new__")
+        assert (
+            new is not None
+        ), "Expected __new__ in {} if __init__ is a slot wrapper.".format(cls)
+
+        # We have to add the ``a_type`` itself to a local namespace for forward references.
+        # This is usually the case for the return value of ``__new__``.
+        #
+        # In particular, the class is not available in the module while we are
+        # registering it through the ``icontract.DBCMeta`` meta-class as its loading is still
+        # in progress.
+
+        strategy = infer_strategy(new, localns={cls.__name__: cls})
+    else:
+        raise AssertionError(
+            "Expected __init__ to be either a function or a slot wrapper, but got: {}".format(
+                type(init)
+            )
+        )
+
+    pack_repr = f"lambda d: {cls.__name__}(**d)"
+
+    pack = lambda d: cls(**d)  # type: ignore
+    pack.__icontract_hypothesis_source_code__ = pack_repr  # type: ignore
+
+    strategy = strategy.map(pack=pack)
+    hypothesis.strategies.register_type_strategy(custom_type=cls, strategy=strategy)
 
 
 def _hook_into_icontract_and_hypothesis() -> None:

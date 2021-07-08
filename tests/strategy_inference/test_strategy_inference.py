@@ -19,6 +19,7 @@ if sys.version_info >= (3, 8):
 import hypothesis
 import hypothesis.strategies as st
 import hypothesis.errors
+import hypothesis.strategies._internal.types
 import icontract
 
 import icontract_hypothesis
@@ -718,6 +719,47 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
 
         icontract_hypothesis.test_with_inferred_strategy(some_func)
 
+    def test_class_not_registered_if_no_contracts_on_init(self) -> None:
+        class A(icontract.DBC):
+            def __init__(self, x: int) -> None:
+                self.x = x
+
+        def some_func(a: A) -> None:
+            pass
+
+        assert A not in hypothesis.strategies._internal.types._global_type_lookup
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+        self.assertEqual(
+            "fixed_dictionaries({'a': builds(A)})",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(some_func)
+
+    def test_class_not_registered_if_no_preconditions_on_init(self) -> None:
+        class A(icontract.DBC):
+            @icontract.ensure(lambda self: self.x % 2 == 0)
+            def __init__(self, x: int) -> None:
+                self.x = 2 * x
+
+        def some_func(a: A) -> None:
+            pass
+
+        assert A not in hypothesis.strategies._internal.types._global_type_lookup
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+        self.assertEqual(
+            "fixed_dictionaries({'a': builds(A)})",
+            str(strategy),
+        )
+
+        # We can not execute the strategy as Hypothesis uses ``inspect.getfullargspec`` which
+        # does not work on decorated functions.
+        #
+        # See this Hypothesis issue: https://github.com/HypothesisWorks/hypothesis/issues/3029
+        # icontract_hypothesis.test_with_inferred_strategy(some_func)
+
 
 # noinspection PyUnusedLocal
 class TestRepresentationOfCondition(unittest.TestCase):
@@ -1014,9 +1056,7 @@ class TestSelf(unittest.TestCase):
         self.assertEqual(
             "fixed_dictionaries({"
             "'number': integers(min_value=1),\n"
-            " 'self': fixed_dictionaries({})"
-            ".map(lambda d: A(**d))"
-            ".filter(lambda self: self.x >= 0)})",
+            " 'self': builds(A).filter(lambda self: self.x >= 0)})",
             str(strategy),
         )
 
@@ -1028,7 +1068,7 @@ class TestSelf(unittest.TestCase):
         self.assertEqual(
             "fixed_dictionaries({"
             "'number': integers(min_value=1),\n"
-            " 'self': fixed_dictionaries({}).map(lambda d: SomeGlobalClass(**d))"
+            " 'self': builds(SomeGlobalClass)"
             ".filter(lambda self: self.x >= 0)})",
             str(strategy),
         )
@@ -1042,7 +1082,7 @@ class TestSelf(unittest.TestCase):
 
         self.assertEqual(
             "fixed_dictionaries({'another_number': integers(min_value=1),\n"
-            " 'self': fixed_dictionaries({}).map(lambda d: SomeGlobalClassWithInheritance(**d))})",
+            " 'self': builds(SomeGlobalClassWithInheritance)})",
             str(strategy),
         )
 
