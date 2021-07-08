@@ -42,7 +42,7 @@ class TestAssumePreconditions(unittest.TestCase):
 
         self.assertIsNotNone(unsatisfied_assumption)
 
-    def test_without_preconditions(self) -> None:
+    def test_without_contracts(self) -> None:
         recorded_inputs = []  # type: List[Any]
 
         def some_func(x: int) -> None:
@@ -102,6 +102,25 @@ class TestAssumePreconditions(unittest.TestCase):
         execute()
 
         self.assertSetEqual({3}, set(recorded_inputs))
+
+    def test_with_only_postconditions(self) -> None:
+        recorded_inputs = []  # type: List[Any]
+
+        @icontract.ensure(lambda result: result > 0)
+        def some_func(x: int) -> int:
+            recorded_inputs.append(x)
+            return 1
+
+        assume_preconditions = icontract_hypothesis.make_assume_preconditions(some_func)
+
+        @hypothesis.given(x=hypothesis.strategies.integers())
+        def execute(x: int) -> None:
+            assume_preconditions(x)
+            some_func(x)
+
+        execute()
+
+        self.assertGreater(len(recorded_inputs), 10)
 
 
 class TestAssumeWeakenedPreconditions(unittest.TestCase):

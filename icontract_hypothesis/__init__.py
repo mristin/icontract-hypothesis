@@ -312,9 +312,9 @@ def _infer_min_max_from_node(
             ):
                 return _InferredMinMax(
                     min_value=right_value,
-                    min_inclusive=isinstance(op0, ast.GtE),
+                    min_inclusive=isinstance(op1, ast.GtE),
                     max_value=left_value,
-                    max_inclusive=isinstance(op1, ast.GtE),
+                    max_inclusive=isinstance(op0, ast.GtE),
                 )
 
             # We could not infer any bound from this condition.
@@ -367,7 +367,9 @@ def _infer_min_max_from_preconditions(
     Return the contracts which could not be interpreted.
     """
     min_value = None  # type: Optional[Union[int, float]]
+    min_inclusive = False
     max_value = None  # type: Optional[Union[int, float]]
+    max_inclusive = False
 
     remaining_contracts = []  # type: List[icontract._types.Contract]
 
@@ -389,30 +391,48 @@ def _infer_min_max_from_preconditions(
                 # This might be a bit counter-intuitive at the first sight.
 
                 if inferred.min_value is not None:
-                    min_value = (
-                        inferred.min_value
-                        if min_value is None
-                        else max(inferred.min_value, min_value)
-                    )
+                    if min_value is None:
+                        min_value = inferred.min_value
+                        min_inclusive = inferred.min_inclusive
+                    else:
+                        if inferred.min_value > min_value:
+                            min_value = inferred.min_value
+                            min_inclusive = inferred.min_inclusive
+                        else:
+                            # Current min is already the correct lower bound.
+                            pass
 
                 if inferred.max_value is not None:
-                    max_value = (
-                        inferred.max_value
-                        if max_value is None
-                        else min(inferred.max_value, max_value)
-                    )
+                    if max_value is None:
+                        max_value = inferred.max_value
+                        max_inclusive = inferred.max_inclusive
+                    else:
+                        if inferred.max_value < max_value:
+                            max_value = inferred.max_value
+                            max_inclusive = inferred.max_inclusive
+                        else:
+                            # Current max is already the correct upper bound.
+                            pass
 
-                # We can not have exclusive bounds on Fractions and Decimals, so we need to leave
-                # the contracts in place.
-                if type_hint in [fractions.Fraction, decimal.Decimal]:
-                    remaining_contracts.append(contract)
+                if (inferred.max_value is not None and not inferred.max_inclusive) or (
+                    inferred.min_value is not None and not inferred.min_inclusive
+                ):
+                    # We can not have exclusive bounds on Fractions and Decimals,
+                    # so we need to leave the contracts in place to filter out these edge cases.
+                    if type_hint in [fractions.Fraction, decimal.Decimal]:
+                        remaining_contracts.append(contract)
             else:
                 remaining_contracts.append(contract)
         else:
             remaining_contracts.append(contract)
 
     return (
-        _InferredMinMax(min_value=min_value, max_value=max_value),
+        _InferredMinMax(
+            min_value=min_value,
+            max_value=max_value,
+            min_inclusive=min_inclusive,
+            max_inclusive=max_inclusive,
+        ),
         remaining_contracts,
     )
 
@@ -431,10 +451,15 @@ def _make_strategy_with_min_max_for_type(
         if max_value is not None and not inferred.max_inclusive:
             max_value -= 1
 
-        strategy = hypothesis.strategies.integers(
-            min_value=min_value,
-            max_value=max_value,
-        )  # type: hypothesis.strategies.SearchStrategy[Any]
+        if min_value == max_value:
+            strategy = hypothesis.strategies.just(
+                min_value
+            )  # type: hypothesis.strategies.SearchStrategy[Any]
+        else:
+            strategy = hypothesis.strategies.integers(
+                min_value=min_value,
+                max_value=max_value,
+            )
 
     elif a_type == float:
         strategy = hypothesis.strategies.floats(
