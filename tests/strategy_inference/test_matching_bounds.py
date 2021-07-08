@@ -181,8 +181,8 @@ class TestGeneral(unittest.TestCase):
         icontract_hypothesis.test_with_inferred_strategy(some_func)
 
     def test_correct_stacked_lower_bound(self) -> None:
-        @icontract.require(lambda x: 0 < x)
         @icontract.require(lambda x: 3 <= x)
+        @icontract.require(lambda x: 0 < x)
         def some_func(x: int) -> None:
             pass
 
@@ -195,8 +195,8 @@ class TestGeneral(unittest.TestCase):
         icontract_hypothesis.test_with_inferred_strategy(some_func)
 
     def test_correct_stacked_upper_bound(self) -> None:
-        @icontract.require(lambda x: x < 100)
         @icontract.require(lambda x: x <= 90)
+        @icontract.require(lambda x: x < 100)
         def some_func(x: int) -> None:
             pass
 
