@@ -11,7 +11,7 @@ import math
 import re
 import sys
 import unittest
-from typing import List, NamedTuple, Union, Optional, Any, Mapping, Sequence
+from typing import List, NamedTuple, Union, Optional, Any, Mapping, Sequence, cast
 
 if sys.version_info >= (3, 8):
     from typing import TypedDict
@@ -696,6 +696,27 @@ class TestWithInferredStrategiesOnClasses(unittest.TestCase):
         # We can not execute this strategy, as ``builds`` is not handling the recursivity well.
         # Please see this Hypothesis issue:
         # https://github.com/HypothesisWorks/hypothesis/issues/3026
+
+    def test_new_with_cast(self) -> None:
+        class PositiveInteger(icontract.DBC, int):
+            @icontract.require(lambda integer: integer > 0)
+            def __new__(cls, integer: int) -> "PositiveInteger":
+                return cast(PositiveInteger, integer)
+
+        def some_func(positive_integer: PositiveInteger) -> None:
+            pass
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+        self.assertEqual(
+            "fixed_dictionaries({"
+            "'positive_integer': "
+            "fixed_dictionaries({"
+            "'integer': integers(min_value=1)})"
+            ".map(lambda d: PositiveInteger(**d))})",
+            str(strategy),
+        )
+
+        icontract_hypothesis.test_with_inferred_strategy(some_func)
 
 
 # noinspection PyUnusedLocal
