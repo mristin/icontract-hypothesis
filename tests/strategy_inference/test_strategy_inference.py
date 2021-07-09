@@ -50,9 +50,19 @@ class TestWithInferredStrategies(unittest.TestCase):
             str(type_error),
         )
 
-    def test_without_preconditions(self) -> None:
+    def test_without_contracts(self) -> None:
         def some_func(x: int) -> None:
             pass
+
+        strategy = icontract_hypothesis.infer_strategy(some_func)
+        self.assertEqual("fixed_dictionaries({'x': integers()})", str(strategy))
+
+        icontract_hypothesis.test_with_inferred_strategy(some_func)
+
+    def test_with_only_preconditions(self) -> None:
+        @icontract.ensure(lambda result: result > 0)
+        def some_func(x: int) -> int:
+            return 1
 
         strategy = icontract_hypothesis.infer_strategy(some_func)
         self.assertEqual("fixed_dictionaries({'x': integers()})", str(strategy))
