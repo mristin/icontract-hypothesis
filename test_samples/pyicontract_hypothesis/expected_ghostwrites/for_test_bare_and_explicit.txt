@@ -2,7 +2,7 @@ def test_some_func(self) -> None:
     @given(
         x=integers(min_value=1)
     )
-    def execute(kwargs) -> None:
+    def execute(**kwargs) -> None:
         test_samples.pyicontract_hypothesis.sample_module.some_func(**kwargs)
 
     execute()
@@ -11,7 +11,7 @@ def test_another_func(self) -> None:
     @given(
         x=integers(min_value=1).filter(lambda x: square_greater_than_zero(x))
     )
-    def execute(kwargs) -> None:
+    def execute(**kwargs) -> None:
         test_samples.pyicontract_hypothesis.sample_module.another_func(**kwargs)
 
     execute()

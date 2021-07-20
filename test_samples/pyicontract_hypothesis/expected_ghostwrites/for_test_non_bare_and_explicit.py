@@ -14,7 +14,7 @@ class TestWithInferredStrategies(unittest.TestCase):
         @given(
             x=integers(min_value=1)
         )
-        def execute(kwargs) -> None:
+        def execute(**kwargs) -> None:
             test_samples.pyicontract_hypothesis.sample_module.some_func(**kwargs)
 
         execute()
@@ -23,7 +23,7 @@ class TestWithInferredStrategies(unittest.TestCase):
         @given(
             x=integers(min_value=1).filter(lambda x: square_greater_than_zero(x))
         )
-        def execute(kwargs) -> None:
+        def execute(**kwargs) -> None:
             test_samples.pyicontract_hypothesis.sample_module.another_func(**kwargs)
 
         execute()
