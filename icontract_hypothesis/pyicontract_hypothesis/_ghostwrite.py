@@ -184,6 +184,8 @@ def _ghostwrite_test_function(
 
     # If there is no filtering on multiple arguments, unpack the argument strategies and
     # re-pack them into a hypothesis.given decorator with argument names as keyword arguments
+    arguments_unpacked = False
+
     if (
         isinstance(strategy, hypothesis.strategies._internal.lazy.LazyStrategy)
         and isinstance(
@@ -192,6 +194,8 @@ def _ghostwrite_test_function(
         )
         and len(strategy.wrapped_strategy.keys) > 0
     ):
+        arguments_unpacked = True
+
         fixed_dict_st = strategy.wrapped_strategy
 
         assert isinstance(
@@ -231,7 +235,7 @@ def _ghostwrite_test_function(
         """\
         def test_{func}(self) -> None:
             {given}
-            def execute(kwargs) -> None:
+            def execute({execute_kwargs}) -> None:
                 {module}.{func}(**kwargs)
 
             execute()"""
@@ -239,6 +243,10 @@ def _ghostwrite_test_function(
         module=module_name,
         func=point.func.__name__,
         given=_indent_but_first(given, level=1),
+        # If we supply unpacked arguments in the ``given``, we have to forward them
+        # as keyword arguments. Otherwise, the generative strategy will be fixed dictionary, so
+        # we need to accept them as a single argument.
+        execute_kwargs="**kwargs" if arguments_unpacked else "kwargs",
     )
 
     return test_func, []

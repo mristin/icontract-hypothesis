@@ -15,7 +15,7 @@ class TestWithInferredStrategies(unittest.TestCase):
             a=integers(),
             b=integers()
         )
-        def execute(kwargs) -> None:
+        def execute(**kwargs) -> None:
             test_samples.pyicontract_hypothesis.well_formatted_with_two_arguments.add(**kwargs)
 
         execute()

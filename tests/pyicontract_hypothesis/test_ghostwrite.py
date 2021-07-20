@@ -5,11 +5,9 @@ import io
 import os
 import pathlib
 import re
-import shutil
 import sys
 import tempfile
 import unittest
-from typing import List
 
 from icontract_hypothesis.pyicontract_hypothesis import _general, _ghostwrite, main
 
