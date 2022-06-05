@@ -10,6 +10,7 @@
 import unittest
 from typing import Sequence
 
+import hypothesis
 import icontract
 
 import icontract_hypothesis
@@ -71,15 +72,27 @@ class TestForwardDeclarations(unittest.TestCase):
     def test_new(self) -> None:
         strategy = icontract_hypothesis.infer_strategy(some_func_on_c)
 
-        self.assertEqual(
-            "fixed_dictionaries("
-            "{'c': "
-            "fixed_dictionaries("
-            "{'xs': one_of(binary(), lists(integers()))"
-            ".filter(lambda xs: all(x > -(2 ** 63) for x in xs))})"
-            ".map(lambda d: C(**d))})",
-            str(strategy),
-        )
+        if hypothesis.__version_info__ <= (6, 14, 0):
+            self.assertEqual(
+                "fixed_dictionaries("
+                "{'c': "
+                "fixed_dictionaries("
+                "{'xs': one_of(binary(), lists(integers()))"
+                ".filter(lambda xs: all(x > -(2 ** 63) for x in xs))})"
+                ".map(lambda d: C(**d))})",
+                str(strategy),
+            )
+        else:
+            self.assertEqual(
+                "fixed_dictionaries("
+                "{'c': "
+                "fixed_dictionaries("
+                "{'xs': one_of("
+                "binary().filter(lambda xs: all(x > -(2 ** 63) for x in xs)), "
+                "lists(integers()).filter(lambda xs: all(x > -(2 ** 63) for x in xs)))})"
+                ".map(lambda d: C(**d))})",
+                str(strategy),
+            )
 
         icontract_hypothesis.test_with_inferred_strategy(do_something)
 
