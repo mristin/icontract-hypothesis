@@ -99,7 +99,7 @@ def benchmark_against_others(repo_root: pathlib.Path, overwrite: bool) -> None:
 
 
 def main() -> int:
-    """"Execute main routine."""
+    """Execute main routine."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--overwrite",
